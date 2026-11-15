@@ -229,30 +229,138 @@ with tab3:
     st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
 
 # ==========================================
-# TAB 4: PATHWAY DIAGRAM (2D)
+# TAB 4: PATHWAY DIAGRAM (Animated)
 # ==========================================
 with tab4:
-    st.subheader("🔬 Biological Pathway Diagram")
-    st.markdown("""<div class="explain-box"><b>What is this?</b> A schematic representation of the mechanism. F. nucleatum activates PI3K/AKT, which (when high) acts as a protective shield against metastasis. The colors update based on the current patient.</div>""", unsafe_allow_html=True)
+    st.subheader("🎬 Animated Biological Pathway")
+    st.markdown("""
+    <div class="explain-box">
+    <b>What is this?</b> An animated, step-by-step visualization of the mechanism. 
+    Press the <b>Play</b> button to watch how F. nucleatum activates PI3K, which then activates AKT (Gamma), and finally drives metastasis.
+    <br><br>
+    <b>Current Patient Status:</b> Gamma = {:.2f} | Threshold = {:.2f} | Outcome = <b style="color:{}">{}</b>
+    </div>
+    """.format(gamma_effective, threshold, color, outcome), unsafe_allow_html=True)
     
-    fig_path = go.Figure()
-    boxes = [
-        (1, 4, "F. nucleatum\n(AI-2 Load)", "#fef3c7"),
-        (3, 4, "Fap2 / RadD\n(Virulence Factors)", "#fed7aa"),
-        (5, 4, "PI3K\n(Activation)", "#dbeafe"),
-        (7, 4, "AKT (Gamma)\n" + f"{gamma_effective:.2f}", "#d1fae5" if outcome == "PROTECTIVE" else "#fee2e2"),
-        (9, 4, "Metastasis\n" + rec, "#d1fae5" if outcome == "PROTECTIVE" else "#fee2e2")
+    # Define the nodes (x, y, text, color)
+    nodes = [
+        {"x": 1, "y": 5, "text": "<b>F. nucleatum</b><br>(AI-2 Load)", "color": "#fef3c7", "border": "#f59e0b"},
+        {"x": 3, "y": 5, "text": "<b>Fap2 / RadD</b><br>(Virulence Factors)", "color": "#fed7aa", "border": "#f97316"},
+        {"x": 5, "y": 5, "text": "<b>PI3K</b><br>(Activation)", "color": "#dbeafe", "border": "#3b82f6"},
+        {"x": 7, "y": 5, "text": "<b>AKT (Gamma)</b><br>{:.2f}".format(gamma_effective), "color": "#d1fae5" if outcome == "PROTECTIVE" else "#fee2e2", "border": "#10b981" if outcome == "PROTECTIVE" else "#ef4444"},
+        {"x": 9, "y": 5, "text": "<b>Metastasis</b><br>{}".format(rec), "color": "#d1fae5" if outcome == "PROTECTIVE" else "#fee2e2", "border": "#10b981" if outcome == "PROTECTIVE" else "#ef4444"}
     ]
-    for x, y, text, color in boxes:
-        fig_path.add_shape(type="rect", x0=x-0.8, y0=y-0.6, x1=x+0.8, y1=y+0.6, line=dict(color="#334155", width=2), fillcolor=color, opacity=0.9)
-        fig_path.add_annotation(x=x, y=y, text=text, showarrow=False, font=dict(size=13, color="#0f172a"), align="center")
-    for i in range(len(boxes)-1):
-        fig_path.add_shape(type="line", x0=boxes[i][0]+0.8, y0=4, x1=boxes[i+1][0]-0.8, y1=4, line=dict(color="#64748b", width=3))
-        fig_path.add_annotation(x=boxes[i+1][0]-0.8, y=4, ax=boxes[i+1][0]-0.9, ay=4, xref="x", yref="y", axref="x", ayref="y", showarrow=True, arrowhead=3, arrowwidth=2, arrowcolor="#64748b")
-    fig_path.add_annotation(x=5, y=5.2, text="<b>Step-by-Step Activation</b>", showarrow=False, font=dict(size=16, color="#0ea5e9"))
-    fig_path.add_annotation(x=5, y=2.8, text="↑ High Gamma = Protective Shield (Do Not Give QQ) | ↓ Low Gamma = Pro-Metastatic (Give QQ)", showarrow=False, font=dict(size=12, color="#64748b"))
-    fig_path.update_layout(xaxis=dict(range=[0, 10], showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(range=[2, 6], showgrid=False, zeroline=False, showticklabels=False), plot_bgcolor="#ffffff", paper_bgcolor="#ffffff", height=400, margin=dict(l=20, r=20, t=20, b=20))
-    st.plotly_chart(fig_path, use_container_width=True)
+    
+    # Create the base figure
+    fig = go.Figure()
+    
+    # --- FRAME 1: F. nucleatum (Step 1) ---
+    fig.add_trace(go.Scatter(
+        x=[nodes[0]["x"]], y=[nodes[0]["y"]],
+        mode='markers+text',
+        marker=dict(size=100, color=nodes[0]["color"], line=dict(color=nodes[0]["border"], width=4)),
+        text=[nodes[0]["text"]], textposition="middle center",
+        textfont=dict(size=12, color="#0f172a"),
+        name="Step 1", showlegend=False, visible=True
+    ))
+    
+    # --- FRAME 2: Virulence Factors (Step 2) ---
+    fig.add_trace(go.Scatter(
+        x=[nodes[1]["x"]], y=[nodes[1]["y"]],
+        mode='markers+text',
+        marker=dict(size=100, color=nodes[1]["color"], line=dict(color=nodes[1]["border"], width=4)),
+        text=[nodes[1]["text"]], textposition="middle center",
+        textfont=dict(size=12, color="#0f172a"),
+        name="Step 2", showlegend=False, visible=False
+    ))
+    # Arrow 1->2
+    fig.add_annotation(x=nodes[1]["x"]-0.5, y=nodes[1]["y"], ax=nodes[0]["x"]+0.5, ay=nodes[0]["y"],
+                       xref="x", yref="y", axref="x", ayref="y", showarrow=True, arrowhead=3, arrowwidth=3, arrowcolor="#64748b",
+                       name="Arrow 1")
+    
+    # --- FRAME 3: PI3K (Step 3) ---
+    fig.add_trace(go.Scatter(
+        x=[nodes[2]["x"]], y=[nodes[2]["y"]],
+        mode='markers+text',
+        marker=dict(size=100, color=nodes[2]["color"], line=dict(color=nodes[2]["border"], width=4)),
+        text=[nodes[2]["text"]], textposition="middle center",
+        textfont=dict(size=12, color="#0f172a"),
+        name="Step 3", showlegend=False, visible=False
+    ))
+    # Arrow 2->3
+    fig.add_annotation(x=nodes[2]["x"]-0.5, y=nodes[2]["y"], ax=nodes[1]["x"]+0.5, ay=nodes[1]["y"],
+                       xref="x", yref="y", axref="x", ayref="y", showarrow=True, arrowhead=3, arrowwidth=3, arrowcolor="#64748b",
+                       name="Arrow 2")
+    
+    # --- FRAME 4: AKT (Step 4) ---
+    fig.add_trace(go.Scatter(
+        x=[nodes[3]["x"]], y=[nodes[3]["y"]],
+        mode='markers+text',
+        marker=dict(size=100, color=nodes[3]["color"], line=dict(color=nodes[3]["border"], width=4)),
+        text=[nodes[3]["text"]], textposition="middle center",
+        textfont=dict(size=12, color="#0f172a"),
+        name="Step 4", showlegend=False, visible=False
+    ))
+    # Arrow 3->4
+    fig.add_annotation(x=nodes[3]["x"]-0.5, y=nodes[3]["y"], ax=nodes[2]["x"]+0.5, ay=nodes[2]["y"],
+                       xref="x", yref="y", axref="x", ayref="y", showarrow=True, arrowhead=3, arrowwidth=3, arrowcolor="#64748b",
+                       name="Arrow 3")
+    
+    # --- FRAME 5: Metastasis (Step 5) ---
+    fig.add_trace(go.Scatter(
+        x=[nodes[4]["x"]], y=[nodes[4]["y"]],
+        mode='markers+text',
+        marker=dict(size=100, color=nodes[4]["color"], line=dict(color=nodes[4]["border"], width=4)),
+        text=[nodes[4]["text"]], textposition="middle center",
+        textfont=dict(size=12, color="#0f172a"),
+        name="Step 5", showlegend=False, visible=False
+    ))
+    # Arrow 4->5
+    fig.add_annotation(x=nodes[4]["x"]-0.5, y=nodes[4]["y"], ax=nodes[3]["x"]+0.5, ay=nodes[3]["y"],
+                       xref="x", yref="y", axref="x", ayref="y", showarrow=True, arrowhead=3, arrowwidth=3, arrowcolor="#64748b",
+                       name="Arrow 4")
+    
+    # --- ANIMATION FRAMES ---
+    fig.frames = [
+        go.Frame(name="Step 1", traces=[0], layout=dict(annotations=[])),
+        go.Frame(name="Step 2", traces=[0, 1], layout=dict(annotations=[fig.layout.annotations[0]])),
+        go.Frame(name="Step 3", traces=[0, 1, 2], layout=dict(annotations=[fig.layout.annotations[0], fig.layout.annotations[1]])),
+        go.Frame(name="Step 4", traces=[0, 1, 2, 3], layout=dict(annotations=[fig.layout.annotations[0], fig.layout.annotations[1], fig.layout.annotations[2]])),
+        go.Frame(name="Step 5", traces=[0, 1, 2, 3, 4], layout=dict(annotations=[fig.layout.annotations[0], fig.layout.annotations[1], fig.layout.annotations[2], fig.layout.annotations[3]]))
+    ]
+    
+    # --- LAYOUT & BUTTONS ---
+    fig.update_layout(
+        title="Step-by-Step Activation Cascade",
+        xaxis=dict(range=[0, 10], showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(range=[3, 7], showgrid=False, zeroline=False, showticklabels=False),
+        plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
+        height=450,
+        margin=dict(l=20, r=20, t=60, b=20),
+        updatemenus=[dict(
+            type="buttons",
+            showactive=False,
+            buttons=[
+                dict(label="▶ Play", method="animate", args=[None, dict(frame=dict(duration=800, redraw=True), fromcurrent=True, transition=dict(duration=500))]),
+                dict(label="⏸ Pause", method="animate", args=[[None], dict(frame=dict(duration=0, redraw=False), mode="immediate", transition=dict(duration=0))])
+            ],
+            x=0.05, y=1.15, xanchor="left", yanchor="top"
+        )]
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # --- TEXT EXPLANATION BELOW ---
+    st.markdown("""
+    <div class="explain-box">
+    <b>Step-by-Step Explanation:</b>
+    <br><b>1. F. nucleatum Adhesion:</b> The bacterium adheres to the colon epithelium via Fap2.
+    <br><b>2. Virulence Factor Injection:</b> Fap2 and RadD are injected into the host cell.
+    <br><b>3. PI3K Activation:</b> The virulence factors activate PI3K.
+    <br><b>4. AKT (Gamma) Phosphorylation:</b> PI3K phosphorylates AKT, creating the "protective shield" (Gamma).
+    <br><b>5. Metastasis Outcome:</b> If Gamma is high, the shield protects (Do Not Give QQ). If Gamma is low, metastasis proceeds (Give QQ).
+    </div>
+    """, unsafe_allow_html=True)
 
 # ==========================================
 # TAB 5: COMPARE PATIENTS
