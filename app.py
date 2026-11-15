@@ -4,8 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
-from skimage.draw import disk, ellipse
-from skimage.util import random_noise
+from skimage.draw import disk
 import io
 
 # --- PAGE CONFIGURATION ---
@@ -65,10 +64,10 @@ else:
     icon = "✅"
     rec = "GIVE QQ THERAPY"
 
-# --- TABS ---
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-    "⚡ Recommendation", "🎮 Sandbox", "🧠 XAI", "🧊 3D Spheroid", 
-    "🌐 3D Pathway (Fixed)", "🔬 Virtual Biopsy (Fixed)", "📊 Compare", "📝 Report"
+# --- TABS (6 TABS) ---
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "⚡ Recommendation", "🎮 Sandbox", "🧠 XAI", 
+    "🔬 Pathway Diagram", "📊 Compare", "📝 Report"
 ])
 
 # ==========================================
@@ -147,103 +146,69 @@ with tab3:
     st.plotly_chart(fig_shap, use_container_width=True)
 
 # ==========================================
-# TAB 4: 3D SPHEROID
+# TAB 4: PATHWAY DIAGRAM (2D, Publication-Ready)
 # ==========================================
 with tab4:
-    st.subheader("🧊 3D Tumor Spheroid")
-    st.markdown("""<div class="explain-box"><b>Rotate this 3D model.</b> Purple peaks = bacterial invasion. Red valleys = tumor chaos.</div>""", unsafe_allow_html=True)
-    u = np.linspace(0, 2 * np.pi, 100); v = np.linspace(0, np.pi, 100)
-    x = np.outer(np.cos(u), np.sin(v)); y = np.outer(np.sin(u), np.sin(v)); z = np.outer(np.ones(np.size(u)), np.cos(v))
-    r = 1 + f_nucleatum_load * np.sin(10 * u) * np.sin(10 * v) * 0.3 - gamma_effective * np.sin(5 * u) * np.cos(5 * v) * 0.2
-    color_surface = f_nucleatum_load * np.sin(5 * u) * np.sin(5 * v) + gamma_effective * np.cos(5 * u)
-    fig_sph = go.Figure(data=[go.Surface(x=r*x, y=r*y, z=r*z, surfacecolor=color_surface, colorscale='RdPu', showscale=False)])
-    fig_sph.update_layout(scene=dict(xaxis=dict(showbackground=False, showticklabels=False), yaxis=dict(showbackground=False, showticklabels=False), zaxis=dict(showbackground=False, showticklabels=False), bgcolor="#f8fafc"), paper_bgcolor="#f8fafc", margin=dict(l=0, r=0, b=0, t=0), height=500)
-    st.plotly_chart(fig_sph, use_container_width=True)
-
-# ==========================================
-# TAB 5: 3D PATHWAY (FIXED WITH COLORS)
-# ==========================================
-with tab5:
-    st.subheader("🌐 3D Interactive Biological Pathway")
-    st.markdown("""<div class="explain-box"><b>Step-by-Step Activation:</b><br>1. F. nucleatum (orange) adheres to the colon.<br>2. Virulence Factors (orange) are injected.<br>3. PI3K (blue) is activated.<br>4. AKT (Gamma) (green/red) creates the protective shield.<br>5. Metastasis is the final outcome.<br><i>Rotate the 3D graph to see the spatial relationship.</i></div>""", unsafe_allow_html=True)
+    st.subheader("🔬 Biological Pathway Diagram")
+    st.markdown("""<div class="explain-box"><b>What is this?</b> A schematic representation of the mechanism. F. nucleatum activates PI3K/AKT, which (when high) acts as a protective shield against metastasis. The colors update based on the current patient.</div>""", unsafe_allow_html=True)
     
-    # Node coordinates and colors
-    nodes = [
-        {"x": 0, "y": 0, "z": 0, "text": f"F. nucleatum<br>Load: {f_nucleatum_load:.2f}", "color": "#f59e0b", "size": 20},
-        {"x": 2, "y": 1, "z": 1, "text": "Fap2 / RadD<br>(Virulence)", "color": "#f97316", "size": 15},
-        {"x": 4, "y": 0, "z": 2, "text": "PI3K<br>(Activation)", "color": "#3b82f6", "size": 15},
-        {"x": 6, "y": 1, "z": 1, "text": f"AKT (Gamma)<br>Score: {gamma_effective:.2f}", "color": "#10b981" if outcome == "PROTECTIVE" else "#ef4444", "size": 25},
-        {"x": 8, "y": 0, "z": 0, "text": f"Metastasis<br>{rec}", "color": "#10b981" if outcome == "PROTECTIVE" else "#ef4444", "size": 20}
+    # Create a clean 2D pathway diagram
+    fig_path = go.Figure()
+    
+    # Define boxes: (x, y, text, color)
+    boxes = [
+        (1, 4, "F. nucleatum\n(AI-2 Load)", "#fef3c7"), # Yellow
+        (3, 4, "Fap2 / RadD\n(Virulence Factors)", "#fed7aa"), # Orange
+        (5, 4, "PI3K\n(Activation)", "#dbeafe"), # Blue
+        (7, 4, "AKT (Gamma)\n" + f"{gamma_effective:.2f}", "#d1fae5" if outcome == "PROTECTIVE" else "#fee2e2"), # Green or Red
+        (9, 4, "Metastasis\n" + rec, "#d1fae5" if outcome == "PROTECTIVE" else "#fee2e2")
     ]
     
-    fig_3d = go.Figure()
+    # Draw boxes
+    for x, y, text, color in boxes:
+        fig_path.add_shape(type="rect", x0=x-0.8, y0=y-0.6, x1=x+0.8, y1=y+0.6, line=dict(color="#334155", width=2), fillcolor=color, opacity=0.9)
+        fig_path.add_annotation(x=x, y=y, text=text, showarrow=False, font=dict(size=13, color="#0f172a"), align="center")
+        
+    # Draw arrows
+    for i in range(len(boxes)-1):
+        fig_path.add_shape(type="line", x0=boxes[i][0]+0.8, y0=4, x1=boxes[i+1][0]-0.8, y1=4, line=dict(color="#64748b", width=3))
+        # Add arrowhead
+        fig_path.add_annotation(x=boxes[i+1][0]-0.8, y=4, ax=boxes[i+1][0]-0.9, ay=4, xref="x", yref="y", axref="x", ayref="y", showarrow=True, arrowhead=3, arrowwidth=2, arrowcolor="#64748b")
     
-    # Draw arrows (cones) between nodes
-    for i in range(len(nodes)-1):
-        fig_3d.add_trace(go.Cone(
-            x=[nodes[i+1]["x"]], y=[nodes[i+1]["y"]], z=[nodes[i+1]["z"]],
-            u=[nodes[i+1]["x"] - nodes[i]["x"]], v=[nodes[i+1]["y"] - nodes[i]["y"]], w=[nodes[i+1]["z"] - nodes[i]["z"]],
-            sizemode="absolute", sizeref=0.5, showscale=False, colorscale=[[0, 'gray'], [1, 'gray']]
-        ))
+    # Add labels
+    fig_path.add_annotation(x=5, y=5.2, text="<b>Step-by-Step Activation</b>", showarrow=False, font=dict(size=16, color="#0ea5e9"))
+    fig_path.add_annotation(x=5, y=2.8, text="↑ High Gamma = Protective Shield (Do Not Give QQ) | ↓ Low Gamma = Pro-Metastatic (Give QQ)", showarrow=False, font=dict(size=12, color="#64748b"))
     
-    # Draw nodes
-    for n in nodes:
-        fig_3d.add_trace(go.Scatter3d(
-            x=[n["x"]], y=[n["y"]], z=[n["z"]],
-            mode='markers+text',
-            marker=dict(size=n["size"], color=n["color"], opacity=0.9, line=dict(color='white', width=2)),
-            text=[n["text"]],
-            textposition="top center",
-            textfont=dict(size=12, color="black"),
-            showlegend=False
-        ))
-    
-    # Add background gradient and grid
-    fig_3d.update_layout(
-        scene=dict(
-            xaxis=dict(showbackground=True, backgroundcolor="#e0f2fe", showgrid=True, gridcolor="white", title=''),
-            yaxis=dict(showbackground=True, backgroundcolor="#e0f2fe", showgrid=True, gridcolor="white", title=''),
-            zaxis=dict(showbackground=True, backgroundcolor="#e0f2fe", showgrid=True, gridcolor="white", title=''),
-            bgcolor="#f8fafc"
-        ),
-        paper_bgcolor="#f8fafc",
-        margin=dict(l=0, r=0, b=0, t=0),
-        height=500
+    fig_path.update_layout(
+        xaxis=dict(range=[0, 10], showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(range=[2, 6], showgrid=False, zeroline=False, showticklabels=False),
+        plot_bgcolor="#ffffff", paper_bgcolor="#ffffff", height=400, margin=dict(l=20, r=20, t=20, b=20)
     )
-    st.plotly_chart(fig_3d, use_container_width=True)
+    st.plotly_chart(fig_path, use_container_width=True)
 
 # ==========================================
-# TAB 6: VIRTUAL BIOPSY (FIXED - REALISTIC TISSUE)
+# TAB 5: VIRTUAL BIOPSY
 # ==========================================
-with tab6:
+with tab5:
     st.subheader("🔬 Virtual Biopsy: H&E Histology Simulation")
     st.markdown("""<div class="explain-box"><b>What is this?</b> A simulated H&E stain of colon tissue. <b>Purple dots</b> = F. nucleatum bacteria. <b>Pink circles</b> = colon crypts (glands). As Gamma increases, the crypts become irregular and chaotic (tumor).</div>""", unsafe_allow_html=True)
     
-    # Create a realistic tissue image
     img_size = 400
     image = np.zeros((img_size, img_size, 3))
+    image[:, :, 0] = 0.95; image[:, :, 1] = 0.75; image[:, :, 2] = 0.85
     
-    # Pink background (eosin stain)
-    image[:, :, 0] = 0.95 # Red
-    image[:, :, 1] = 0.75 # Green
-    image[:, :, 2] = 0.85 # Blue
-    
-    # Draw colon crypts (glands)
     num_crypts = 20
     for _ in range(num_crypts):
         r = np.random.randint(15, 40)
         c = np.random.randint(r, img_size - r)
         rr, cc = disk((c, c), r, shape=image.shape[:2])
-        # Crypt lumen (white)
         image[rr, cc, 0] = 0.98; image[rr, cc, 1] = 0.95; image[rr, cc, 2] = 0.98
-        # Crypt wall (purple)
         rr_outer, cc_outer = disk((c, c), r + 5, shape=image.shape[:2])
         wall_mask = np.zeros_like(image[:, :, 0], dtype=bool)
         wall_mask[rr_outer, cc_outer] = True
         wall_mask[rr, cc] = False
         image[wall_mask, 0] = 0.4; image[wall_mask, 1] = 0.2; image[wall_mask, 2] = 0.5
     
-    # Add bacteria (purple dots)
     num_bacteria = int(f_nucleatum_load * 500)
     for _ in range(num_bacteria):
         r = np.random.randint(1, 4)
@@ -251,24 +216,21 @@ with tab6:
         rr, cc = disk((c, c), r, shape=image.shape[:2])
         image[rr, cc, 0] = 0.3; image[rr, cc, 1] = 0.1; image[rr, cc, 2] = 0.4
     
-    # Add tumor chaos (irregular texture) based on Gamma
     if gamma_effective > threshold:
         noise = np.random.normal(0, gamma_effective * 0.1, (img_size, img_size))
         for ch in range(3):
             image[:, :, ch] += gaussian_filter(noise, sigma=2)
     
-    # Clip and show
     image = np.clip(image, 0, 1)
     fig_bio, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(image)
-    ax.axis('off')
+    ax.imshow(image); ax.axis('off')
     ax.set_title("Simulated H&E Stain (40x Magnification)", fontsize=14)
     st.pyplot(fig_bio)
 
 # ==========================================
-# TAB 7: COMPARE
+# TAB 6: COMPARE
 # ==========================================
-with tab7:
+with tab6:
     st.subheader("📊 Compare Patients")
     st.markdown("""<div class="explain-box"><b>How to use:</b> Save at least 2 patients in Tab 1. This scatter plot shows how they cluster.</div>""", unsafe_allow_html=True)
     if len(st.session_state.history) < 2: st.info("Save at least 2 patients in Tab 1.")
@@ -281,16 +243,6 @@ with tab7:
         fig_comp.update_layout(title="Patient Clustering", template="plotly_white", height=500)
         st.plotly_chart(fig_comp, use_container_width=True)
         st.dataframe(df, use_container_width=True)
-
-# ==========================================
-# TAB 8: SMART REPORT
-# ==========================================
-with tab8:
-    st.subheader("📝 Smart Report")
-    st.markdown("""<div class="explain-box"><b>Auto-generated clinical note.</b></div>""", unsafe_allow_html=True)
-    report = f"Patient: {sex}, PIK3CA {pik3ca}. Effective Gamma: {gamma_effective:.2f}. F. nucleatum Load: {f_nucleatum_load:.2f}.\n\nAI RECOMMENDATION: {outcome} (Risk: {risk_pct}%)."
-    st.text_area("Generated Clinical Note:", report, height=200)
-    st.download_button("📄 Download Note", data=report, file_name="Clinical_Note.txt")
 
 # --- FOOTER ---
 st.markdown("---")
