@@ -2,7 +2,7 @@ streamlit
 numpy
 pandas
 plotly
-lifelines
 matplotlib
 seaborn
 fpdf2
+scipy
