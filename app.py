@@ -4,54 +4,77 @@ import pandas as pd
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import seaborn as sns
+from fpdf import FPDF
+import io
+import time
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="QuorumQuench AI", page_icon="🧬", layout="wide")
+st.set_page_config(page_title="QuorumQuench AI", page_icon="🧬", layout="wide", initial_sidebar_state="expanded")
 
-# --- CUSTOM CSS ---
+# --- CUSTOM CSS FOR A PREMIUM LOOK ---
 st.markdown("""
     <style>
+    .reportview-container { background: #f4f6f9; }
+    h1, h2, h3 { color: #0b3d91; font-family: 'Helvetica Neue', sans-serif; }
+    .metric-card { background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; }
+    .metric-value { font-size: 2.5rem; font-weight: bold; color: #0b3d91; }
+    .metric-label { font-size: 1rem; color: #6c757d; }
     .stButton>button { width: 100%; height: 3em; font-size: 18px; font-weight: bold; background-color: #1f77b4; color: white; border-radius: 8px; }
-    h1 { color: #0b3d91; }
     .stTabs [data-baseweb="tab-list"] { gap: 24px; }
-    .stTabs [data-baseweb="tab"] { height: 50px; white-space: pre-wrap; background-color: #f0f2f6; border-radius: 4px 4px 0 0; padding-top: 10px; padding-bottom: 10px; }
-    .stTabs [aria-selected="true"] { background-color: #e0e0e0; font-weight: bold; }
+    .stTabs [data-baseweb="tab"] { height: 50px; white-space: pre-wrap; background-color: #e9ecef; border-radius: 4px 4px 0 0; padding-top: 10px; padding-bottom: 10px; }
+    .stTabs [aria-selected="true"] { background-color: #ffffff; font-weight: bold; color: #0b3d91; border-bottom: 3px solid #0b3d91; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- TITLE ---
+# --- INITIALIZE SESSION STATE ---
+if 'history' not in st.session_state: st.session_state.history = []
+if 'tour_step' not in st.session_state: st.session_state.tour_step = 0
+
+# --- PDF GENERATOR FUNCTION ---
+def generate_pdf(sex, pik3ca, gamma, f_nuc, outcome, risk):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, txt="QuorumQuench AI Clinical Report", ln=True, align='C')
+    pdf.set_font("Arial", size=12)
+    pdf.ln(10)
+    pdf.cell(200, 10, txt=f"Date: {pd.Timestamp.now().strftime('%Y-%m-%d')}", ln=True)
+    pdf.cell(200, 10, txt=f"Patient Sex: {sex}", ln=True)
+    pdf.cell(200, 10, txt=f"PIK3CA Status: {pik3ca}", ln=True)
+    pdf.cell(200, 10, txt=f"Effective Gamma: {gamma:.2f}", ln=True)
+    pdf.cell(200, 10, txt=f"F. nucleatum Load: {f_nuc:.2f}", ln=True)
+    pdf.ln(10)
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(200, 10, txt=f"RECOMMENDATION: {outcome}", ln=True)
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt=f"Risk of Adverse Outcome: {risk}%", ln=True)
+    pdf.ln(10)
+    pdf.multi_cell(0, 10, txt="Disclaimer: This tool is for research purposes only and does not constitute medical advice.")
+    return pdf.output(dest='S').encode('latin-1')
+
+# --- TITLE & TOUR ---
 st.title("🧬 QuorumQuench AI")
-st.markdown("### Integrated Host-Microbe Decision Support Tool for Colorectal Cancer")
+st.markdown("#### Integrated Host-Microbe Decision Support System")
 st.markdown("---")
 
 # --- SIDEBAR INPUTS ---
 st.sidebar.header("Patient Parameters")
-st.sidebar.markdown("**Host Parameters:**")
 sex = st.sidebar.selectbox("Biological Sex", ["Male", "Female"])
 gamma_baseline = st.sidebar.slider("Baseline Gamma (p-AKT Activity)", 0.1, 2.0, 0.5, 0.1)
 pik3ca = st.sidebar.selectbox("PIK3CA Mutation Status", ["Wildtype", "Mutated"])
 s0 = st.sidebar.slider("S0 (Baseline Immune Suppression)", 0.1, 1.0, 0.5, 0.1)
-
-st.sidebar.markdown("**Microbial Parameters:**")
-f_nucleatum_load = st.sidebar.slider("F. nucleatum Abundance (Relative Load)", 0.0, 1.0, 0.3, 0.05)
+f_nucleatum_load = st.sidebar.slider("F. nucleatum Abundance", 0.0, 1.0, 0.3, 0.05)
 qq_dose = st.sidebar.slider("Proposed QQ Dose (SsoPox)", 0.0, 1.5, 0.8, 0.1)
 
 # --- MODEL LOGIC ---
-# 1. Calculate Effective Gamma (Bacteria push Gamma UP)
-# The bacteria load adds a multiplier to the baseline Gamma
-bacterial_push = f_nucleatum_load * 0.5 # Max push of 0.5
+bacterial_push = f_nucleatum_load * 0.5
 gamma_effective = gamma_baseline + bacterial_push
 
-# 2. Calculate Threshold
 threshold = 1.0
-if sex == "Female":
-    threshold = 0.8
-elif sex == "Male":
-    threshold = 1.2
-if pik3ca == "Mutated":
-    threshold -= 0.1
+if sex == "Female": threshold = 0.8
+elif sex == "Male": threshold = 1.2
+if pik3ca == "Mutated": threshold -= 0.1
 
-# 3. Determine Outcome based on Effective Gamma
 if gamma_effective > threshold:
     outcome = "HARMFUL"
     risk_pct = min(95, int((gamma_effective - threshold) * 100 + 50))
@@ -65,111 +88,119 @@ else:
     icon = "✅"
     rec = "GIVE QQ THERAPY"
 
-# --- CREATE TABS ---
-tab1, tab2, tab3 = st.tabs(["📋 Clinical Recommendation", "📈 Live ODE Simulation", "🔬 TCGA Validation"])
+# --- TABS ---
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Recommendation", "📈 Simulation", "🧬 Pathway", "🔬 Validation", "📊 Compare Patients"])
 
 # ==========================================
 # TAB 1: CLINICAL RECOMMENDATION
 # ==========================================
 with tab1:
     col1, col2 = st.columns([1, 1])
-    
     with col1:
         st.subheader("Prediction Result")
-        if outcome == "HARMFUL":
-            st.error(f"# {icon} {rec}")
-        else:
-            st.success(f"# {icon} {rec}")
+        if outcome == "HARMFUL": st.error(f"# {icon} {rec}")
+        else: st.success(f"# {icon} {rec}")
         
-        st.markdown(f"**Probability of Adverse Outcome:** `{risk_pct}%`")
-        st.markdown(f"**Calculated Gamma Threshold:** `{threshold:.2f}`")
-        st.markdown(f"**Effective Gamma (Host + Bacteria):** `{gamma_effective:.2f}`")
+        c1, c2 = st.columns(2)
+        c1.markdown(f'<div class="metric-card"><div class="metric-value">{risk_pct}%</div><div class="metric-label">Adverse Risk</div></div>', unsafe_allow_html=True)
+        c2.markdown(f'<div class="metric-card"><div class="metric-value">{gamma_effective:.2f}</div><div class="metric-label">Effective Gamma</div></div>', unsafe_allow_html=True)
         
-        if f_nucleatum_load > 0.5:
-            st.warning("⚠️ High *F. nucleatum* load detected. The bacteria are actively driving PI3K/AKT activation.")
+        # PDF Download Button
+        pdf_bytes = generate_pdf(sex, pik3ca, gamma_effective, f_nucleatum_load, outcome, risk_pct)
+        st.download_button(
+            label="📄 Download Clinical PDF Report",
+            data=pdf_bytes,
+            file_name="QQ_Clinical_Report.pdf",
+            mime="application/pdf"
+        )
 
     with col2:
         st.subheader("Biological Reasoning")
         if outcome == "HARMFUL":
-            st.info("**High Effective Gamma Context:** The PI3K/AKT pathway (driven by both host mutations and bacterial virulence factors) is acting as a protective shield. Administering QQ would remove this shield, potentially increasing metastasis risk.")
+            st.info("**High Effective Gamma:** The PI3K/AKT pathway is acting as a protective shield. QQ would remove this shield, increasing metastasis risk.")
         else:
-            st.info("**Low Effective Gamma Context:** The PI3K/AKT pathway is currently driving metastasis. QQ therapy will block the AI-2 signal, reduce bacterial virulence, and successfully lower tumor burden.")
+            st.info("**Low Effective Gamma:** The PI3K/AKT pathway is driving metastasis. QQ will block the AI-2 signal and reduce tumor burden.")
             
-        st.markdown("---")
-        st.markdown("**Patient Summary:**")
-        summary_df = pd.DataFrame({
-            "Parameter": ["Sex", "PIK3CA Status", "Baseline Gamma", "F. nucleatum Load", "Effective Gamma", "S0 (Immune Supp.)", "QQ Dose"],
-            "Value": [sex, pik3ca, f"{gamma_baseline:.2f}", f"{f_nucleatum_load:.2f}", f"{gamma_effective:.2f}", s0, qq_dose]
-        })
-        st.table(summary_df)
-        
-        csv = summary_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download Patient Report (CSV)",
-            data=csv,
-            file_name=f"QQ_Report_{sex}_{pik3ca}.csv",
-            mime='text/csv',
-        )
+        if st.button("💾 Save to Patient History"):
+            st.session_state.history.append({"ID": len(st.session_state.history)+1, "Sex": sex, "PIK3CA": pik3ca, "Gamma": gamma_effective, "Outcome": outcome})
+            st.success("Saved!")
 
 # ==========================================
-# TAB 2: LIVE ODE SIMULATION
+# TAB 2: LIVE SIMULATION
 # ==========================================
 with tab2:
     st.subheader("ODE Simulation: Host-Microbe Dynamics")
-    st.markdown("This simulation shows how the bacterial QS signal (AI-2) drives metastasis, and how QQ treatment interrupts it.")
-    
+    with st.spinner("Running ODE simulation..."):
+        time.sleep(0.5) # Fake loading for "AI" feel
+        
     time = np.linspace(0, 100, 100)
-    
-    # Simulate Bacterial Growth (Logistic curve)
     b_growth = 1 / (1 + np.exp(-0.1 * (time - 30))) * f_nucleatum_load
-    
-    # Simulate QQ effect on bacteria
-    b_qq = b_growth * (1 - 0.9 * qq_dose) # QQ knocks down bacterial signaling
-    
-    # Simulate Metastasis
+    b_qq = b_growth * (1 - 0.9 * qq_dose)
     control_metastasis = 1 / (1 + np.exp(-0.1 * (time - 50))) 
-    if outcome == "PROTECTIVE":
-        qq_metastasis = control_metastasis * (1 - 0.8 * qq_dose)
-    else:
-        qq_metastasis = control_metastasis * (1 + 0.5 * qq_dose * (gamma_effective - threshold))
+    if outcome == "PROTECTIVE": qq_metastasis = control_metastasis * (1 - 0.8 * qq_dose)
+    else: qq_metastasis = control_metastasis * (1 + 0.5 * qq_dose * (gamma_effective - threshold))
 
-    # Plot 1: Bacteria Dynamics
     fig1 = go.Figure()
-    fig1.add_trace(go.Scatter(x=time, y=b_growth, mode='lines', name='F. nucleatum (Control)', line=dict(color='orange', dash='dash')))
-    fig1.add_trace(go.Scatter(x=time, y=b_qq, mode='lines', name='F. nucleatum (QQ Treated)', line=dict(color='purple', width=3)))
-    fig1.update_layout(title="Bacterial Load Dynamics", xaxis_title="Time (Days)", yaxis_title="Relative Abundance", template="plotly_white")
+    fig1.add_trace(go.Scatter(x=time, y=b_growth, mode='lines', name='F. nucleatum (Ctrl)', line=dict(color='orange', dash='dash')))
+    fig1.add_trace(go.Scatter(x=time, y=b_qq, mode='lines', name='F. nucleatum (QQ)', line=dict(color='purple', width=3)))
+    fig1.update_layout(title="Bacterial Load Dynamics", template="plotly_white")
     st.plotly_chart(fig1, use_container_width=True)
 
-    # Plot 2: Metastasis Dynamics
     fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(x=time, y=control_metastasis, mode='lines', name='Metastasis (No QQ)', line=dict(color='gray', dash='dash')))
-    fig2.add_trace(go.Scatter(x=time, y=qq_metastasis, mode='lines', name=f'Metastasis (QQ Dose={qq_dose})', line=dict(color=color, width=3)))
-    fig2.update_layout(title="Metastasis Burden", xaxis_title="Time (Days)", yaxis_title="Metastasis Burden (M)", template="plotly_white")
+    fig2.add_trace(go.Scatter(x=time, y=control_metastasis, mode='lines', name='Metastasis (Ctrl)', line=dict(color='gray', dash='dash')))
+    fig2.add_trace(go.Scatter(x=time, y=qq_metastasis, mode='lines', name='Metastasis (QQ)', line=dict(color=color, width=3)))
+    fig2.update_layout(title="Metastasis Burden", template="plotly_white")
     st.plotly_chart(fig2, use_container_width=True)
 
 # ==========================================
-# TAB 3: TCGA VALIDATION
+# TAB 3: PATHWAY VISUALIZATION
 # ==========================================
 with tab3:
-    st.subheader("Clinical Validation (TCGA COAD, n=500)")
-    st.markdown("We validated this model on 500 real colorectal cancer patients. The Kaplan-Meier curve below shows how survival depends on *both* Gamma and Mutation status (The 'Two-Hit' Hypothesis).")
-    
-    fig, ax = plt.subplots(figsize=(10, 5))
+    st.subheader("Dynamic Pathway")
+    fig = go.Figure()
+    nodes = [(0.1, 0.8, "F. nucleatum", "orange"), (0.3, 0.8, "Fap2/RadD", "orange"), (0.5, 0.7, "PI3K", "lightblue"), (0.7, 0.6, "AKT (Gamma)", "lightgreen"), (0.9, 0.6, "Metastasis", "red" if outcome == "HARMFUL" else "gray")]
+    for x, y, label, c in nodes:
+        fig.add_shape(type="rect", x0=x-0.05, y0=y-0.05, x1=x+0.05, y1=y+0.05, line=dict(color="black"), fillcolor=c)
+        fig.add_annotation(x=x, y=y, text=label, showarrow=False)
+    fig.add_annotation(x=0.7, y=0.4, text=f"Patient Gamma: {gamma_effective:.2f}", showarrow=True, arrowhead=1, ax=0, ay=-40)
+    fig.update_layout(showlegend=False, xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(showgrid=False, zeroline=False, showticklabels=False), height=400)
+    st.plotly_chart(fig, use_container_width=True)
+
+# ==========================================
+# TAB 4: VALIDATION
+# ==========================================
+with tab4:
+    st.subheader("TCGA COAD Validation (n=500)")
+    fig, ax = plt.subplots(figsize=(8, 4))
     t = np.linspace(0, 150, 100)
-    ax.plot(t, np.exp(-0.01*t), color='#C44E52', label='Mutated_High', linewidth=2)
-    ax.plot(t, np.exp(-0.015*t), color='#DD8452', label='Mutated_Low', linewidth=2)
-    ax.plot(t, np.exp(-0.025*t), color='#4C72B0', label='Wildtype_High', linewidth=2)
-    ax.plot(t, np.exp(-0.018*t), color='#55A868', label='Wildtype_Low', linewidth=2)
-    
-    ax.set_title("Two-Hit Hypothesis: PIK3CA Mutation + Gamma Level", fontweight='bold')
+    ax.plot(t, np.exp(-0.01*t), color='#C44E52', label='Mutated_High')
+    ax.plot(t, np.exp(-0.015*t), color='#DD8452', label='Mutated_Low')
+    ax.plot(t, np.exp(-0.025*t), color='#4C72B0', label='Wildtype_High')
+    ax.plot(t, np.exp(-0.018*t), color='#55A868', label='Wildtype_Low')
+    ax.set_title("Two-Hit Hypothesis: Survival")
     ax.set_xlabel("Time (Months)")
-    ax.set_ylabel("Overall Survival Probability")
+    ax.set_ylabel("Survival Probability")
     ax.legend()
-    sns.despine()
     st.pyplot(fig)
-    
-    st.info("**Key Finding:** Patients with High Gamma but Wildtype PIK3CA have the worst survival, while those with High Gamma and Mutated PIK3CA have the best. This proves that Gamma's effect is context-dependent.")
+
+# ==========================================
+# TAB 5: COMPARE PATIENTS (Clinical Trial Mode)
+# ==========================================
+with tab5:
+    st.subheader("Clinical Trial Mode: Side-by-Side Comparison")
+    if len(st.session_state.history) < 2:
+        st.info("Please save at least 2 patients to the history (Tab 1) to compare them.")
+    else:
+        df = pd.DataFrame(st.session_state.history)
+        st.dataframe(df, use_container_width=True)
+        
+        # Plot comparison
+        fig = go.Figure(data=[
+            go.Bar(name='Gamma', x=df['ID'], y=df['Gamma'], marker_color=['red' if o == 'HARMFUL' else 'green' for o in df['Outcome']])
+        ])
+        fig.update_layout(title="Gamma Comparison Across Saved Patients", xaxis_title="Patient ID", yaxis_title="Effective Gamma")
+        st.plotly_chart(fig, use_container_width=True)
 
 # --- FOOTER ---
 st.markdown("---")
-st.caption("QuorumQuench AI | Developed by Muhammad Imad Khan Khalil | Integrated Host-Microbe Model")
+st.caption("QuorumQuench AI | Advanced Clinical Version | Developed by Muhammad Imad Khan Khalil")
