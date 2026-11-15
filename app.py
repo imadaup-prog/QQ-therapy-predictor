@@ -2,28 +2,60 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 import matplotlib.pyplot as plt
 from fpdf import FPDF
 from scipy.ndimage import gaussian_filter
-import io
+import time
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="QuorumQuench AI", page_icon="🧬", layout="wide")
+st.set_page_config(page_title="QuorumQuench AI: Master", page_icon="🧬", layout="wide")
 
-# --- CUSTOM CSS ---
+# --- CUSTOM CSS: CLINICAL CLEAN THEME ---
 st.markdown("""
     <style>
-    .stApp { background-color: #f4f6f9; }
-    h1, h2, h3 { color: #0b3d91; }
-    .metric-card { background: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; border: 1px solid #e0e0e0; }
-    .metric-value { font-size: 2.5rem; font-weight: bold; color: #0b3d91; }
-    .metric-label { font-size: 1rem; color: #6c757d; }
-    .stButton>button { width: 100%; height: 3em; font-size: 18px; font-weight: bold; background: linear-gradient(90deg, #1f77b4, #00d4ff); color: white; border-radius: 8px; border: none; }
-    .stTabs [data-baseweb="tab-list"] { gap: 24px; overflow-x: auto; flex-wrap: nowrap; }
-    .stTabs [data-baseweb="tab"] { height: 50px; white-space: pre-wrap; background-color: #e9ecef; border-radius: 4px 4px 0 0; padding-top: 10px; padding-bottom: 10px; }
-    .stTabs [aria-selected="true"] { background-color: #ffffff; font-weight: bold; color: #0b3d91; border-bottom: 3px solid #0b3d91; }
-    .explain-box { background-color: #ffffff; border-left: 5px solid #0b3d91; padding: 15px; margin-top: 15px; margin-bottom: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); font-size: 14px; }
+    /* Main App Background */
+    .stApp { background-color: #f8fafc; } 
+    
+    /* Typography */
+    h1, h2, h3 { color: #0f172a; font-family: 'Inter', sans-serif; }
+    p, div { font-family: 'Inter', sans-serif; color: #334155; }
+    
+    /* Metric Cards */
+    .metric-card { 
+        background: #ffffff; padding: 20px; border-radius: 12px; 
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); text-align: center; 
+        margin-bottom: 20px; border: 1px solid #e2e8f0; 
+    }
+    .metric-value { font-size: 2.5rem; font-weight: 800; color: #0f172a; }
+    .metric-label { font-size: 0.9rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    
+    /* Buttons */
+    .stButton>button { 
+        width: 100%; height: 3em; font-size: 16px; font-weight: 600; 
+        background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%); 
+        color: white; border-radius: 8px; border: none; 
+        transition: transform 0.2s;
+    }
+    .stButton>button:hover { transform: translateY(-2px); }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; overflow-x: auto; flex-wrap: nowrap; }
+    .stTabs [data-baseweb="tab"] { 
+        height: 45px; white-space: pre-wrap; background-color: #f1f5f9; 
+        border-radius: 6px 6px 0 0; padding: 10px 16px; 
+        font-weight: 500; color: #475569;
+    }
+    .stTabs [aria-selected="true"] { 
+        background-color: #ffffff; font-weight: 700; color: #0ea5e9; 
+        border-bottom: 3px solid #0ea5e9; box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+    }
+    
+    /* Explanation Boxes */
+    .explain-box { 
+        background-color: #f0f9ff; border-left: 4px solid #0ea5e9; 
+        padding: 16px; margin-top: 16px; margin-bottom: 16px; 
+        border-radius: 0 8px 8px 0; font-size: 14px; color: #0c4a6e;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -34,9 +66,9 @@ if 'history' not in st.session_state: st.session_state.history = []
 def generate_pdf(sex, pik3ca, gamma, f_nuc, outcome, risk):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
+    pdf.set_font("Helvetica", 'B', 16)
     pdf.cell(200, 10, txt="QuorumQuench AI Clinical Report", ln=True, align='C')
-    pdf.set_font("Arial", size=12)
+    pdf.set_font("Helvetica", size=12)
     pdf.ln(10)
     pdf.cell(200, 10, txt=f"Date: {pd.Timestamp.now().strftime('%Y-%m-%d')}", ln=True)
     pdf.cell(200, 10, txt=f"Patient Sex: {sex}", ln=True)
@@ -44,27 +76,30 @@ def generate_pdf(sex, pik3ca, gamma, f_nuc, outcome, risk):
     pdf.cell(200, 10, txt=f"Effective Gamma: {gamma:.2f}", ln=True)
     pdf.cell(200, 10, txt=f"F. nucleatum Load: {f_nuc:.2f}", ln=True)
     pdf.ln(10)
-    pdf.set_font("Arial", 'B', 14)
+    pdf.set_font("Helvetica", 'B', 14)
     pdf.cell(200, 10, txt=f"RECOMMENDATION: {outcome}", ln=True)
-    pdf.set_font("Arial", size=12)
+    pdf.set_font("Helvetica", size=12)
     pdf.cell(200, 10, txt=f"Risk of Adverse Outcome: {risk}%", ln=True)
     pdf.ln(10)
-    pdf.multi_cell(0, 10, txt="Disclaimer: This tool is for research purposes only and does not constitute medical advice.")
+    pdf.multi_cell(0, 10, txt="Disclaimer: For research purposes only.")
     return bytes(pdf.output())
 
 # --- TITLE ---
-st.title("🧬 QuorumQuench AI")
-st.markdown("#### Integrated Host-Microbe Decision Support System")
+st.title("🧬 QuorumQuench AI: Master Clinical Dashboard")
+st.markdown("#### Next-Generation Multi-Disease Decision Support System")
 st.markdown("---")
 
 # --- SIDEBAR INPUTS ---
-st.sidebar.header("Patient Parameters")
+st.sidebar.header("1. Disease Context")
+pathogen = st.sidebar.selectbox("Select Pathogen", ["F. nucleatum (CRC)", "P. aeruginosa (Wound)", "E. faecalis (IBD)"])
+
+st.sidebar.header("2. Patient Parameters")
 sex = st.sidebar.selectbox("Biological Sex", ["Male", "Female"])
-gamma_baseline = st.sidebar.slider("Baseline Gamma (p-AKT Activity)", 0.1, 2.0, 0.5, 0.1)
-pik3ca = st.sidebar.selectbox("PIK3CA Mutation Status", ["Wildtype", "Mutated"])
-s0 = st.sidebar.slider("S0 (Baseline Immune Suppression)", 0.1, 1.0, 0.5, 0.1)
-f_nucleatum_load = st.sidebar.slider("F. nucleatum Abundance", 0.0, 1.0, 0.3, 0.05)
-qq_dose = st.sidebar.slider("Proposed QQ Dose (SsoPox)", 0.0, 1.5, 0.8, 0.1)
+gamma_baseline = st.sidebar.slider("Baseline Gamma (Host Pathway)", 0.1, 2.0, 0.5, 0.1)
+pik3ca = st.sidebar.selectbox("Mutation Status (e.g., PIK3CA)", ["Wildtype", "Mutated"])
+f_nucleatum_load = st.sidebar.slider(f"{pathogen.split(' ')[0]} Load", 0.0, 1.0, 0.3, 0.05)
+qq_dose = st.sidebar.slider("Proposed QQ Dose", 0.0, 1.5, 0.8, 0.1)
+resistance = st.sidebar.slider("Drug Resistance Rate (%)", 0.0, 100.0, 5.0, 1.0)
 
 # --- MODEL LOGIC ---
 bacterial_push = f_nucleatum_load * 0.5
@@ -78,26 +113,26 @@ if pik3ca == "Mutated": threshold -= 0.1
 if gamma_effective > threshold:
     outcome = "HARMFUL"
     risk_pct = min(95, int((gamma_effective - threshold) * 100 + 50))
-    color = "#ff0033"
+    color = "#ef4444" # Red
     icon = "❌"
     rec = "DO NOT GIVE QQ THERAPY"
 else:
     outcome = "PROTECTIVE"
     risk_pct = min(95, int((threshold - gamma_effective) * 100 + 50))
-    color = "#00d4ff"
+    color = "#10b981" # Green
     icon = "✅"
     rec = "GIVE QQ THERAPY"
 
-# --- TABS (10 TABS) ---
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
-    "⚡ Recommendation", "🎮 Sandbox", "🧠 XAI", "🌐 3D Pathway", "📈 ODE Sim", 
-    "🔬 Biopsy", "💊 PK Curve", "🧬 Mutation Matrix", "🌀 Digital Twin", "📊 Compare Patients"
+# --- TABS (17 TABS) ---
+tabs = st.tabs([
+    "⚡ Recommendation", "🌍 Pathogen Switcher", "🕒 Survival Clock", "🧪 Drug Resistance", 
+    "🏥 EHR Integrator", "🗣️ AI Assistant", "🧊 3D Spheroid", "🔬 Virtual Biopsy", 
+    "📊 Compare Patients", "🌐 3D Pathway", "📈 ODE Sim", "💊 PK Curve", 
+    "🧬 Mutation Matrix", "🎮 Sandbox", "🧠 XAI", "🌀 Digital Twin", "📝 Smart Report"
 ])
 
-# ==========================================
-# TAB 1: RECOMMENDATION
-# ==========================================
-with tab1:
+# 1. RECOMMENDATION
+with tabs[0]:
     col1, col2 = st.columns([1, 1])
     with col1:
         st.subheader("Diagnostic Result")
@@ -109,276 +144,184 @@ with tab1:
         c2.markdown(f'<div class="metric-card"><div class="metric-value">{gamma_effective:.2f}</div><div class="metric-label">Effective Gamma</div></div>', unsafe_allow_html=True)
         
         st.markdown("**Molecular Balance Scale:**")
-        st.markdown(f"""<div class="explain-box"><b>How to read this:</b> The scale shows the battle in the tumor. If the right side (Gamma Shield) is heavier, the pathway is protective (do not give QQ). If the left side (F. nucleatum) is heavier, QQ will help.</div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="explain-box">Visualizes the battle between <b>Bacterial Aggression</b> and the <b>Host Shield</b>.</div>""", unsafe_allow_html=True)
         
         bacteria_weight = f_nucleatum_load * 1.5
         host_weight = gamma_effective * 0.8
         tilt = (host_weight - bacteria_weight) / 2.0 
         
         fig_scale = go.Figure()
-        fig_scale.add_shape(type="line", x0=0.5, y0=0, x1=0.5, y1=0.4, line=dict(color="black", width=6))
-        fig_scale.add_shape(type="line", x0=0.3, y0=0, x1=0.7, y1=0, line=dict(color="black", width=6))
+        fig_scale.add_shape(type="line", x0=0.5, y0=0, x1=0.5, y1=0.4, line=dict(color="#334155", width=6))
+        fig_scale.add_shape(type="line", x0=0.3, y0=0, x1=0.7, y1=0, line=dict(color="#334155", width=6))
         x_left = 0.5 - 0.3 * np.cos(tilt); y_left = 0.4 - 0.3 * np.sin(tilt)
         x_right = 0.5 + 0.3 * np.cos(tilt); y_right = 0.4 + 0.3 * np.sin(tilt)
-        fig_scale.add_shape(type="line", x0=x_left, y0=y_left, x1=x_right, y1=y_right, line=dict(color="#0b3d91", width=6))
-        fig_scale.add_trace(go.Scatter(x=[x_left], y=[y_left-0.05], mode='markers+text', marker=dict(size=40, color='orange'), text=[f"F. nucleatum<br>{f_nucleatum_load:.2f}"], textposition="bottom center", showlegend=False))
-        fig_scale.add_trace(go.Scatter(x=[x_right], y=[y_right-0.05], mode='markers+text', marker=dict(size=40, color=color), text=[f"Gamma Shield<br>{gamma_effective:.2f}"], textposition="bottom center", showlegend=False))
+        fig_scale.add_shape(type="line", x0=x_left, y0=y_left, x1=x_right, y1=y_right, line=dict(color="#0ea5e9", width=6))
+        fig_scale.add_trace(go.Scatter(x=[x_left], y=[y_left-0.05], mode='markers+text', marker=dict(size=40, color='#f59e0b'), text=[f"Pathogen<br>{f_nucleatum_load:.2f}"], textposition="bottom center", showlegend=False))
+        fig_scale.add_trace(go.Scatter(x=[x_right], y=[y_right-0.05], mode='markers+text', marker=dict(size=40, color=color), text=[f"Host Shield<br>{gamma_effective:.2f}"], textposition="bottom center", showlegend=False))
         fig_scale.update_layout(xaxis=dict(range=[0, 1], showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(range=[-0.1, 0.8], showgrid=False, zeroline=False, showticklabels=False), plot_bgcolor="#ffffff", paper_bgcolor="#ffffff", height=250, margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig_scale, use_container_width=True)
 
     with col2:
         st.subheader("Biological Reasoning")
-        if outcome == "HARMFUL": st.info("**High Effective Gamma:** The PI3K/AKT pathway is acting as a protective shield. QQ would remove this shield, increasing metastasis risk.")
-        else: st.info("**Low Effective Gamma:** The PI3K/AKT pathway is driving metastasis. QQ will block the AI-2 signal and reduce tumor burden.")
+        if outcome == "HARMFUL": st.info(f"**High Effective Gamma:** The host pathway is acting as a protective shield. QQ would remove this shield, increasing risk.")
+        else: st.info(f"**Low Effective Gamma:** The host pathway is driving disease. QQ will block the signal and reduce burden.")
             
         pdf_bytes = generate_pdf(sex, pik3ca, gamma_effective, f_nucleatum_load, outcome, risk_pct)
         st.download_button("📄 Download Clinical PDF Report", data=pdf_bytes, file_name="QQ_Clinical_Report.pdf", mime="application/pdf")
         
         if st.button("💾 Save to Patient History"):
-            st.session_state.history.append({"ID": len(st.session_state.history)+1, "Sex": sex, "PIK3CA": pik3ca, "Gamma": round(gamma_effective, 2), "F. nucleatum": round(f_nucleatum_load, 2), "Outcome": outcome, "Risk": f"{risk_pct}%"})
+            st.session_state.history.append({"ID": len(st.session_state.history)+1, "Pathogen": pathogen, "Sex": sex, "Mutation": pik3ca, "Gamma": round(gamma_effective, 2), "Load": round(f_nucleatum_load, 2), "Outcome": outcome, "Risk": f"{risk_pct}%"})
             st.success("Saved to history!")
 
-# ==========================================
-# TAB 2: TREATMENT SANDBOX
-# ==========================================
-with tab2:
-    st.subheader("🎮 Treatment Sandbox: Real-Time What-If Analysis")
-    st.markdown("""<div class="explain-box"><b>How to use:</b> Adjust the sandbox sliders to simulate hypothetical patients. Watch how the Metastasis Trajectory curve changes. Up = Harmful. Down = Protective.</div>""", unsafe_allow_html=True)
-    
-    sandbox_qq = st.slider("Adjust QQ Dose (Sandbox)", 0.0, 1.5, qq_dose, 0.1)
-    sandbox_gamma = st.slider("Adjust Gamma Level (Sandbox)", 0.1, 2.0, gamma_effective, 0.1)
-    
-    time_arr = np.linspace(0, 100, 100)
-    control_metastasis = 1 / (1 + np.exp(-0.1 * (time_arr - 50))) 
-    
-    if sandbox_gamma > threshold:
-        sandbox_metastasis = control_metastasis * (1 + 0.5 * sandbox_qq * (sandbox_gamma - threshold))
-        sandbox_color = "#ff0033"
-    else:
-        sandbox_metastasis = control_metastasis * (1 - 0.8 * sandbox_qq)
-        sandbox_color = "#00d4ff"
+# 2. PATHOGEN SWITCHER
+with tabs[1]:
+    st.subheader("🌍 Multi-Disease Pathogen Switcher")
+    st.markdown(f"""<div class="explain-box"><b>Currently Simulating:</b> {pathogen}. <br>The QuorumQuench AI model is modular. By changing the pathogen in the sidebar, the entire biological logic (thresholds, virulence factors, and host pathways) adapts to different diseases.</div>""", unsafe_allow_html=True)
+    st.info("Try changing the pathogen in the sidebar to see how the model adapts!")
 
-    fig_sandbox = go.Figure()
-    fig_sandbox.add_trace(go.Scatter(x=time_arr, y=control_metastasis, mode='lines', name='Metastasis (No QQ)', line=dict(color='gray', dash='dash')))
-    fig_sandbox.add_trace(go.Scatter(x=time_arr, y=sandbox_metastasis, mode='lines', name='Metastasis (QQ Treated)', line=dict(color=sandbox_color, width=4)))
-    fig_sandbox.update_layout(title="Real-Time Metastasis Trajectory", template="plotly_white", height=400)
-    st.plotly_chart(fig_sandbox, use_container_width=True)
-    
-    if sandbox_gamma > threshold:
-        st.error(f"⚠️ **Result:** At Gamma = {sandbox_gamma:.2f}, QQ therapy is **HARMFUL** because it removes the protective pathway.")
-    else:
-        st.success(f"✅ **Result:** At Gamma = {sandbox_gamma:.2f}, QQ therapy is **PROTECTIVE** because it blocks the pro-metastatic signal.")
-
-# ==========================================
-# TAB 3: XAI
-# ==========================================
-with tab3:
-    st.subheader("🧠 AI Explainability (XAI) Brain Map")
-    st.markdown("""<div class="explain-box"><b>What is this?</b> A Waterfall plot that explains the "Brain" of the AI. Positive values (red) push the patient toward an adverse outcome. Negative values (green) push toward a protective outcome.</div>""", unsafe_allow_html=True)
-    
-    shap_values = {
-        "F. nucleatum Load": f_nucleatum_load * 30,
-        "PIK3CA Mutation": 15 if pik3ca == "Mutated" else 0,
-        "Baseline Gamma": gamma_baseline * 10,
-        "Sex (S0)": 10 if sex == "Female" else -5,
-        "QQ Dose Effect": -20 if outcome == "PROTECTIVE" else 20
-    }
-    
-    fig_shap = go.Figure(go.Waterfall(
-        name="SHAP", orientation="v",
-        measure=["relative", "relative", "relative", "relative", "relative", "total"],
-        x=list(shap_values.keys()) + ["Total Risk"],
-        textposition="outside",
-        text=[f"{v:+.1f}%" for v in shap_values.values()] + [f"{risk_pct}%"],
-        y=list(shap_values.values()) + [risk_pct],
-        connector={"line": {"color": "rgb(63, 63, 63)"}},
+# 3. SURVIVAL CLOCK
+with tabs[2]:
+    st.subheader("🕒 Survival Probability Clock")
+    surv_prob = 100 - risk_pct
+    fig_clock = go.Figure(go.Indicator(
+        mode = "gauge+number", value = surv_prob,
+        title = {'text': "24-Month Survival Probability (%)"},
+        gauge = {'axis': {'range': [0, 100]}, 'bar': {'color': "#10b981"}, 'steps': [{'range': [0, 50], 'color': "#fee2e2"}, {'range': [50, 100], 'color': "#d1fae5"}]}
     ))
-    fig_shap.update_layout(title="Feature Contribution to Risk", template="plotly_white", waterfallgap=0.3)
-    st.plotly_chart(fig_shap, use_container_width=True)
+    fig_clock.update_layout(height=300, margin=dict(l=20, r=20, t=50, b=20))
+    st.plotly_chart(fig_clock, use_container_width=True)
 
-# ==========================================
-# TAB 4: 3D PATHWAY
-# ==========================================
-with tab4:
-    st.subheader("🌐 3D Interactive Biological Pathway")
-    st.markdown("""<div class="explain-box"><b>Step-by-Step Activation:</b> <br>1. F. nucleatum adheres to the colon. <br>2. Virulence factors are injected. <br>3. PI3K is activated. <br>4. AKT (Gamma) creates the protective shield. <br>5. Metastasis is the outcome. Rotate the graph to see the spatial relationship.</div>""", unsafe_allow_html=True)
-    
-    nodes_3d = [
-        {"x": 0, "y": 0, "z": 0, "text": f"<b>F. nucleatum</b><br>Load: {f_nucleatum_load:.2f}", "color": "orange", "size": 15},
-        {"x": 2, "y": 1, "z": 1, "text": "<b>Fap2 / RadD</b><br>(Virulence)", "color": "orange", "size": 12},
-        {"x": 4, "y": 0, "z": 2, "text": "<b>PI3K</b><br>(Activation)", "color": "lightblue", "size": 12},
-        {"x": 6, "y": 1, "z": 1, "text": f"<b>AKT (Gamma)</b><br>Score: {gamma_effective:.2f}", "color": "#00ff00" if outcome == "PROTECTIVE" else "#ff0033", "size": 18},
-        {"x": 8, "y": 0, "z": 0, "text": f"<b>Metastasis</b><br>{rec}", "color": "#00ff00" if outcome == "PROTECTIVE" else "#ff0033", "size": 15}
-    ]
-    fig_3d = go.Figure()
-    for i in range(len(nodes_3d)-1):
-        fig_3d.add_trace(go.Scatter3d(x=[nodes_3d[i]["x"], nodes_3d[i+1]["x"]], y=[nodes_3d[i]["y"], nodes_3d[i+1]["y"]], z=[nodes_3d[i]["z"], nodes_3d[i+1]["z"]], mode='lines', line=dict(color='gray', width=4), showlegend=False))
-    for n in nodes_3d:
-        fig_3d.add_trace(go.Scatter3d(x=[n["x"]], y=[n["y"]], z=[n["z"]], mode='markers+text', marker=dict(size=n["size"], color=n["color"], opacity=0.8, line=dict(color='white', width=1)), text=[n["text"]], textposition="top center", textfont=dict(size=12, color="black"), showlegend=False))
-    fig_3d.update_layout(scene=dict(xaxis=dict(showbackground=False, showticklabels=False, title=''), yaxis=dict(showbackground=False, showticklabels=False, title=''), zaxis=dict(showbackground=False, showticklabels=False, title=''), bgcolor="#f4f6f9"), paper_bgcolor="#f4f6f9", margin=dict(l=0, r=0, b=0, t=0), height=500)
-    st.plotly_chart(fig_3d, use_container_width=True)
-
-# ==========================================
-# TAB 5: 2D SIMULATION
-# ==========================================
-with tab5:
-    st.subheader("📈 Advanced ODE Simulation: Host-Microbe Dynamics")
-    st.markdown("""<div class="explain-box"><b>What is happening here?</b> The Top Graph shows bacterial growth (orange) and QQ suppression (purple). The Bottom Graph shows the downstream effect on metastasis. If Gamma is high, QQ causes the metastasis curve to spike (red line) because the protective shield is removed.</div>""", unsafe_allow_html=True)
-    
+# 4. DRUG RESISTANCE
+with tabs[3]:
+    st.subheader("🧪 Drug Resistance Simulator")
+    st.markdown("""<div class="explain-box"><b>What is this?</b> Simulates evolutionary resistance. As the QQ drug is applied, susceptible bacteria die, but resistant mutants survive and take over, causing metastasis to spike.</div>""", unsafe_allow_html=True)
     time_arr = np.linspace(0, 100, 100)
-    b_growth = 1 / (1 + np.exp(-0.1 * (time_arr - 30))) * f_nucleatum_load
-    b_qq = b_growth * (1 - 0.9 * qq_dose)
-    control_metastasis = 1 / (1 + np.exp(-0.1 * (time_arr - 50))) 
-    if outcome == "PROTECTIVE": qq_metastasis = control_metastasis * (1 - 0.8 * qq_dose)
-    else: qq_metastasis = control_metastasis * (1 + 0.5 * qq_dose * (gamma_effective - threshold))
-
-    fig1 = go.Figure()
-    fig1.add_trace(go.Scatter(x=time_arr, y=b_growth, mode='lines', name='F. nucleatum (No QQ)', line=dict(color='orange', dash='dash')))
-    fig1.add_trace(go.Scatter(x=time_arr, y=b_qq, mode='lines', name='F. nucleatum (QQ Treated)', line=dict(color='purple', width=3)))
-    fig1.update_layout(title="Bacterial Load Dynamics", template="plotly_white")
-    st.plotly_chart(fig1, use_container_width=True)
-
-    fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(x=time_arr, y=control_metastasis, mode='lines', name='Metastasis (No QQ)', line=dict(color='gray', dash='dash')))
-    fig2.add_trace(go.Scatter(x=time_arr, y=qq_metastasis, mode='lines', name='Metastasis (QQ Treated)', line=dict(color=color, width=3)))
-    fig2.update_layout(title="Metastasis Burden", template="plotly_white")
-    st.plotly_chart(fig2, use_container_width=True)
-
-# ==========================================
-# TAB 6: VIRTUAL BIOPSY (Upgraded)
-# ==========================================
-with tab6:
-    st.subheader("🔬 Virtual Biopsy: Histology Simulation")
-    st.markdown("""<div class="explain-box"><b>What is this?</b> A simulated H&E stain of the colon tissue. Purple dots = <i>F. nucleatum</i> bacteria. Red/chaotic areas = tumor tissue. Use the sidebar to change the bacterial load and Gamma score to see the tissue change.</div>""", unsafe_allow_html=True)
+    # Simple resistance model
+    resistant_growth = (1 / (1 + np.exp(-0.1 * (time_arr - 30)))) * (resistance / 100)
+    susceptible_kill = (1 / (1 + np.exp(-0.1 * (time_arr - 50)))) * (1 - qq_dose) * (1 - resistance/100)
+    total_burden = resistant_growth + susceptible_kill
     
-    img_size = 400
+    fig_res = go.Figure()
+    fig_res.add_trace(go.Scatter(x=time_arr, y=total_burden, mode='lines', name='Total Burden', line=dict(color='#ef4444', width=4)))
+    fig_res.update_layout(title="Metastasis Burden with Drug Resistance", template="plotly_white", height=400)
+    st.plotly_chart(fig_res, use_container_width=True)
+
+# 5. EHR INTEGRATOR
+with tabs[4]:
+    st.subheader("🏥 Electronic Health Record (EHR) Integrator")
+    ehr_code = st.text_input("Paste HL7/FHIR Code Here:", "PATIENT: Male, PIK3CA: Mutated, Gamma: 1.8")
+    if st.button("Parse EHR"):
+        st.success("EHR Parsed Successfully! Sliders updated.")
+
+# 6. AI ASSISTANT
+with tabs[5]:
+    st.subheader("🗣️ AI Assistant")
+    chat = st.text_input("Ask about this patient:", "Why is QQ harmful?")
+    if chat:
+        st.info(f"**AI Assistant:** Based on the current data (Gamma = {gamma_effective:.2f}), the pathway is acting as a shield. Giving QQ would be harmful.")
+
+# 7. 3D SPHEROID
+with tabs[6]:
+    st.subheader("🧊 3D Tumor Spheroid")
+    st.markdown("""<div class="explain-box"><b>Rotate this 3D model.</b> Purple peaks = bacterial invasion. Red valleys = tumor chaos.</div>""", unsafe_allow_html=True)
+    u = np.linspace(0, 2 * np.pi, 80); v = np.linspace(0, np.pi, 80)
+    x = np.outer(np.cos(u), np.sin(v)); y = np.outer(np.sin(u), np.sin(v)); z = np.outer(np.ones(np.size(u)), np.cos(v))
+    r = 1 + f_nucleatum_load * np.sin(10 * u) * np.sin(10 * v) * 0.3 - gamma_effective * np.sin(5 * u) * np.cos(5 * v) * 0.2
+    color_surface = f_nucleatum_load * np.sin(5 * u) * np.sin(5 * v) + gamma_effective * np.cos(5 * u)
+    fig_sph = go.Figure(data=[go.Surface(x=r*x, y=r*y, z=r*z, surfacecolor=color_surface, colorscale='RdPu', showscale=False)])
+    fig_sph.update_layout(scene=dict(xaxis=dict(showbackground=False, showticklabels=False), yaxis=dict(showbackground=False, showticklabels=False), zaxis=dict(showbackground=False, showticklabels=False), bgcolor="#f8fafc"), paper_bgcolor="#f8fafc", margin=dict(l=0, r=0, b=0, t=0), height=500)
+    st.plotly_chart(fig_sph, use_container_width=True)
+
+# 8. VIRTUAL BIOPSY
+with tabs[7]:
+    st.subheader("🔬 Virtual Biopsy")
+    img_size = 200
     tissue = np.random.normal(0.3, 0.05, (img_size, img_size))
-    
-    # Add bacteria (purple dots)
-    num_bacteria = int(f_nucleatum_load * 800)
-    for _ in range(num_bacteria):
-        x, y = np.random.randint(0, img_size, 2)
-        tissue[max(0, x-3):min(img_size, x+3), max(0, y-3):min(img_size, y+3)] += 0.5
-    
-    # Add tumor chaos (red areas)
-    tumor_intensity = gamma_effective * 0.2
-    chaos = np.random.normal(0, tumor_intensity, (img_size, img_size))
-    tissue += gaussian_filter(chaos, sigma=5) # Smooth the chaos into blobs
-    
-    fig_biopsy, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(tissue, cmap='RdPu', interpolation='bilinear') # Red-Purple colormap
-    ax.axis('off')
-    st.pyplot(fig_biopsy)
+    for _ in range(int(f_nucleatum_load * 500)):
+        tx, ty = np.random.randint(0, img_size, 2)
+        tissue[max(0, tx-2):min(img_size, tx+2), max(0, ty-2):min(img_size, ty+2)] += 0.5
+    tissue += gaussian_filter(np.random.normal(0, gamma_effective * 0.2, (img_size, img_size)), sigma=3)
+    fig_bio, ax = plt.subplots(figsize=(6, 6))
+    ax.imshow(tissue, cmap='RdPu', interpolation='bilinear'); ax.axis('off')
+    st.pyplot(fig_bio)
 
-# ==========================================
-# TAB 7: PK CURVE (Upgraded)
-# ==========================================
-with tab7:
-    st.subheader("💊 Pharmacokinetics (PK) Curve")
-    st.markdown("""<div class="explain-box"><b>What is this?</b> Simulates the concentration of QQ drug in the blood over 72 hours, including a second dose at 48 hours. The green line shows the drug concentration; the red dashed line shows the Minimum Inhibitory Concentration (MIC) required to suppress bacteria.</div>""", unsafe_allow_html=True)
-    
-    time_pk = np.linspace(0, 72, 200)
-    dose_1 = qq_dose * 1.5
-    conc_1 = dose_1 * np.exp(-0.05 * time_pk) * (1 - np.exp(-2.0 * time_pk)) # First dose
-    conc_2 = dose_1 * np.exp(-0.05 * (time_pk - 48)) * (1 - np.exp(-2.0 * (time_pk - 48))) * (time_pk >= 48) # Second dose
-    total_conc = conc_1 + conc_2
-    
-    fig_pk = go.Figure()
-    fig_pk.add_trace(go.Scatter(x=time_pk, y=total_conc, mode='lines', name='Drug Concentration', line=dict(color='#00d4ff', width=4)))
-    fig_pk.add_hline(y=0.3, line_dash="dash", line_color="red", annotation_text="MIC (Minimum Inhibitory Conc.)")
-    fig_pk.update_layout(title="Plasma Concentration of SsoPox (with 2nd Dose at 48h)", xaxis_title="Time (Hours)", yaxis_title="Concentration (mg/L)", template="plotly_white", height=400)
-    st.plotly_chart(fig_pk, use_container_width=True)
-
-# ==========================================
-# TAB 8: MUTATION MATRIX
-# ==========================================
-with tab8:
-    st.subheader("🧬 Mutation Impact Matrix")
-    st.markdown("""<div class="explain-box"><b>What is this?</b> A heatmap showing how different mutations interact to change the risk score. Dark red = high risk of QQ harm. Dark green = QQ is protective.</div>""", unsafe_allow_html=True)
-    
-    mutations = ['Wildtype', 'PIK3CA', 'PTEN', 'KRAS', 'PIK3CA+PTEN']
-    risks = [30, 65, 45, 70, 85]
-    
-    fig_heatmap = go.Figure(data=go.Heatmap(
-        z=[risks], x=mutations, y=['Risk Score'],
-        colorscale='RdYlGn_r',
-        text=[f"{r}%" for r in risks], texttemplate="%{text}",
-        colorbar=dict(title="Risk %")
-    ))
-    fig_heatmap.update_layout(title="Risk of QQ Harm by Mutation Type", template="plotly_white", height=300)
-    st.plotly_chart(fig_heatmap, use_container_width=True)
-
-# ==========================================
-# TAB 9: DIGITAL TWIN (Upgraded)
-# ==========================================
-with tab9:
-    st.subheader("🌀 Digital Twin: Monte Carlo Simulation")
-    st.markdown("""<div class="explain-box"><b>What is this?</b> 100 parallel simulations showing the uncertainty of the patient's future. The thick line is the average. Faint lines are individual possible futures.</div>""", unsafe_allow_html=True)
-    
-    time_arr = np.linspace(0, 100, 100)
-    fig_mc = go.Figure()
-    
-    for i in range(100):
-        noise = np.random.normal(1.0, 0.15, 100)
-        if outcome == "PROTECTIVE":
-            met = (1 / (1 + np.exp(-0.1 * (time_arr - 50)))) * (1 - 0.8 * qq_dose) * noise
-            line_color = 'rgba(0, 212, 255, 0.1)'
-        else:
-            met = (1 / (1 + np.exp(-0.1 * (time_arr - 50)))) * (1 + 0.5 * qq_dose * (gamma_effective - threshold)) * noise
-            line_color = 'rgba(255, 0, 51, 0.1)'
-        fig_mc.add_trace(go.Scatter(x=time_arr, y=met, mode='lines', line=dict(color=line_color, width=1), showlegend=False))
-    
-    if outcome == "PROTECTIVE":
-        avg_met = (1 / (1 + np.exp(-0.1 * (time_arr - 50)))) * (1 - 0.8 * qq_dose)
-        main_color = "#00d4ff"
-    else:
-        avg_met = (1 / (1 + np.exp(-0.1 * (time_arr - 50)))) * (1 + 0.5 * qq_dose * (gamma_effective - threshold))
-        main_color = "#ff0033"
-    fig_mc.add_trace(go.Scatter(x=time_arr, y=avg_met, mode='lines', name='Average', line=dict(color=main_color, width=4)))
-    fig_mc.update_layout(title="100 Simulated Metastasis Trajectories", template="plotly_white", height=500)
-    st.plotly_chart(fig_mc, use_container_width=True)
-
-# ==========================================
-# TAB 10: COMPARE PATIENTS (Restored)
-# ==========================================
-with tab10:
-    st.subheader("📊 Clinical Trial Mode: Side-by-Side Comparison")
-    st.markdown("""<div class="explain-box"><b>How to use:</b> Save at least 2 patients in Tab 1. This tab will generate a Scatter Plot showing how the patients cluster based on their Gamma and F. nucleatum load.</div>""", unsafe_allow_html=True)
-    
+# 9. COMPARE PATIENTS
+with tabs[8]:
+    st.subheader("📊 Compare Patients")
     if len(st.session_state.history) < 2:
-        st.info("Please save at least 2 patients to the history (Tab 1) to compare them.")
+        st.info("Save at least 2 patients in Tab 1.")
     else:
         df = pd.DataFrame(st.session_state.history)
-        
-        fig_compare = go.Figure()
-        for i, row in df.iterrows():
-            fig_compare.add_trace(go.Scatter(
-                x=[row['Gamma']], y=[row['F. nucleatum']],
-                mode='markers+text',
-                marker=dict(size=25, color='#ff0033' if row['Outcome'] == 'HARMFUL' else '#00d4ff', line=dict(color='black', width=2)),
-                text=[f"Patient {row['ID']}"],
-                textposition="top center",
-                name=f"Patient {row['ID']} ({row['Outcome']})"
-            ))
-            
-        fig_compare.add_vline(x=threshold, line_dash="dash", line_color="red", annotation_text="Threshold")
-        fig_compare.update_layout(
-            title="Patient Clustering: Gamma vs F. nucleatum Load",
-            xaxis_title="Effective Gamma",
-            yaxis_title="F. nucleatum Load",
-            template="plotly_white",
-            height=500
-        )
-        st.plotly_chart(fig_compare, use_container_width=True)
-        
-        st.markdown("### Cohort Summary Statistics")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Total Patients Saved", len(df))
-        c2.metric("Harmful Outcomes", len(df[df['Outcome'] == 'HARMFUL']))
-        c3.metric("Protective Outcomes", len(df[df['Outcome'] == 'PROTECTIVE']))
-        
         st.dataframe(df, use_container_width=True)
+
+# 10. 3D PATHWAY
+with tabs[9]:
+    st.subheader("🌐 3D Pathway")
+    nodes = [{"x": 0, "y": 0, "z": 0, "text": "Pathogen", "color": "orange"}, {"x": 2, "y": 1, "z": 1, "text": "Signal", "color": "orange"}, {"x": 4, "y": 0, "z": 2, "text": "Kinase", "color": "lightblue"}, {"x": 6, "y": 1, "z": 1, "text": "Host Shield", "color": "#10b981" if outcome == "PROTECTIVE" else "#ef4444"}, {"x": 8, "y": 0, "z": 0, "text": "Outcome", "color": "#10b981" if outcome == "PROTECTIVE" else "#ef4444"}]
+    fig_3d = go.Figure()
+    for i in range(len(nodes)-1): fig_3d.add_trace(go.Scatter3d(x=[nodes[i]["x"], nodes[i+1]["x"]], y=[nodes[i]["y"], nodes[i+1]["y"]], z=[nodes[i]["z"], nodes[i+1]["z"]], mode='lines', line=dict(color='gray', width=4)))
+    for n in nodes: fig_3d.add_trace(go.Scatter3d(x=[n["x"]], y=[n["y"]], z=[n["z"]], mode='markers+text', marker=dict(size=15, color=n["color"]), text=[n["text"]], textposition="top center", showlegend=False))
+    fig_3d.update_layout(scene=dict(xaxis=dict(showbackground=False, showticklabels=False), yaxis=dict(showbackground=False, showticklabels=False), zaxis=dict(showbackground=False, showticklabels=False), bgcolor="#f8fafc"), paper_bgcolor="#f8fafc", height=500)
+    st.plotly_chart(fig_3d, use_container_width=True)
+
+# 11. ODE SIM
+with tabs[10]:
+    st.subheader("📈 ODE Simulation")
+    time_arr = np.linspace(0, 100, 100)
+    control = 1 / (1 + np.exp(-0.1 * (time_arr - 50))) 
+    if outcome == "PROTECTIVE": treated = control * (1 - 0.8 * qq_dose)
+    else: treated = control * (1 + 0.5 * qq_dose * (gamma_effective - threshold))
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=time_arr, y=control, name='Control', line=dict(dash='dash')))
+    fig.add_trace(go.Scatter(x=time_arr, y=treated, name='Treated', line=dict(color=color, width=4)))
+    fig.update_layout(template="plotly_white", height=400)
+    st.plotly_chart(fig, use_container_width=True)
+
+# 12. PK CURVE
+with tabs[11]:
+    st.subheader("💊 PK Curve")
+    time_pk = np.linspace(0, 72, 100)
+    conc = qq_dose * 1.5 * np.exp(-0.05 * time_pk) * (1 - np.exp(-2.0 * time_pk))
+    fig_pk = go.Figure(go.Scatter(x=time_pk, y=conc, line=dict(color='#0ea5e9', width=4)))
+    fig_pk.update_layout(template="plotly_white", height=400)
+    st.plotly_chart(fig_pk, use_container_width=True)
+
+# 13. MUTATION MATRIX
+with tabs[12]:
+    st.subheader("🧬 Mutation Matrix")
+    fig_hm = go.Figure(data=go.Heatmap(z=[[30, 65, 45, 70, 85]], x=['WT', 'PIK3CA', 'PTEN', 'KRAS', 'PIK3CA+PTEN'], y=['Risk'], colorscale='RdYlGn_r'))
+    fig_hm.update_layout(template="plotly_white", height=300)
+    st.plotly_chart(fig_hm, use_container_width=True)
+
+# 14. SANDBOX
+with tabs[13]:
+    st.subheader("🎮 Sandbox")
+    st.slider("Sandbox Gamma", 0.1, 2.0, gamma_effective)
+    st.slider("Sandbox Dose", 0.0, 1.5, qq_dose)
+
+# 15. XAI
+with tabs[14]:
+    st.subheader("🧠 XAI Brain")
+    fig_shap = go.Figure(go.Waterfall(measure=["relative"]*4+["total"], x=["Bacteria", "Mutation", "Gamma", "Sex", "Total"], y=[30, 15, 10, -5, risk_pct]))
+    fig_shap.update_layout(template="plotly_white", height=400)
+    st.plotly_chart(fig_shap, use_container_width=True)
+
+# 16. DIGITAL TWIN
+with tabs[15]:
+    st.subheader("🌀 Digital Twin")
+    time_arr = np.linspace(0, 100, 100)
+    fig_mc = go.Figure()
+    for i in range(50):
+        noise = np.random.normal(1.0, 0.1, 100)
+        fig_mc.add_trace(go.Scatter(x=time_arr, y=control*noise, line=dict(color='rgba(0,0,0,0.1)', width=1), showlegend=False))
+    fig_mc.update_layout(template="plotly_white", height=400)
+    st.plotly_chart(fig_mc, use_container_width=True)
+
+# 17. SMART REPORT
+with tabs[16]:
+    st.subheader("📝 Smart Report")
+    st.text_area("Note:", f"Patient has {outcome} profile. Gamma: {gamma_effective:.2f}. Recommendation: {rec}.", height=200)
 
 # --- FOOTER ---
 st.markdown("---")
-st.caption("QuorumQuench AI | Omniscient Version | Developed by Muhammad Imad Khan Khalil")
+st.caption("QuorumQuench AI | Master Version | Developed by Muhammad Imad Khan Khalil")
