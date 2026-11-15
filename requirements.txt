@@ -5,3 +5,4 @@ plotly
 lifelines
 matplotlib
 seaborn
+fpdf2
