@@ -28,7 +28,6 @@ st.markdown("""
 
 # --- INITIALIZE SESSION STATE ---
 if 'history' not in st.session_state: st.session_state.history = []
-if 'tour_step' not in st.session_state: st.session_state.tour_step = 0
 
 # --- PDF GENERATOR FUNCTION ---
 def generate_pdf(sex, pik3ca, gamma, f_nuc, outcome, risk):
@@ -50,7 +49,8 @@ def generate_pdf(sex, pik3ca, gamma, f_nuc, outcome, risk):
     pdf.cell(200, 10, txt=f"Risk of Adverse Outcome: {risk}%", ln=True)
     pdf.ln(10)
     pdf.multi_cell(0, 10, txt="Disclaimer: This tool is for research purposes only and does not constitute medical advice.")
-    return pdf.output(dest='S').encode('latin-1')
+    # CORRECTED LINE BELOW
+    return bytes(pdf.output())
 
 # --- TITLE & TOUR ---
 st.title("🧬 QuorumQuench AI")
@@ -131,24 +131,24 @@ with tab1:
 with tab2:
     st.subheader("ODE Simulation: Host-Microbe Dynamics")
     with st.spinner("Running ODE simulation..."):
-        time.sleep(0.5) # Fake loading for "AI" feel
+        time.sleep(0.5) 
         
-    time = np.linspace(0, 100, 100)
-    b_growth = 1 / (1 + np.exp(-0.1 * (time - 30))) * f_nucleatum_load
+    time_arr = np.linspace(0, 100, 100)
+    b_growth = 1 / (1 + np.exp(-0.1 * (time_arr - 30))) * f_nucleatum_load
     b_qq = b_growth * (1 - 0.9 * qq_dose)
-    control_metastasis = 1 / (1 + np.exp(-0.1 * (time - 50))) 
+    control_metastasis = 1 / (1 + np.exp(-0.1 * (time_arr - 50))) 
     if outcome == "PROTECTIVE": qq_metastasis = control_metastasis * (1 - 0.8 * qq_dose)
     else: qq_metastasis = control_metastasis * (1 + 0.5 * qq_dose * (gamma_effective - threshold))
 
     fig1 = go.Figure()
-    fig1.add_trace(go.Scatter(x=time, y=b_growth, mode='lines', name='F. nucleatum (Ctrl)', line=dict(color='orange', dash='dash')))
-    fig1.add_trace(go.Scatter(x=time, y=b_qq, mode='lines', name='F. nucleatum (QQ)', line=dict(color='purple', width=3)))
+    fig1.add_trace(go.Scatter(x=time_arr, y=b_growth, mode='lines', name='F. nucleatum (Ctrl)', line=dict(color='orange', dash='dash')))
+    fig1.add_trace(go.Scatter(x=time_arr, y=b_qq, mode='lines', name='F. nucleatum (QQ)', line=dict(color='purple', width=3)))
     fig1.update_layout(title="Bacterial Load Dynamics", template="plotly_white")
     st.plotly_chart(fig1, use_container_width=True)
 
     fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(x=time, y=control_metastasis, mode='lines', name='Metastasis (Ctrl)', line=dict(color='gray', dash='dash')))
-    fig2.add_trace(go.Scatter(x=time, y=qq_metastasis, mode='lines', name='Metastasis (QQ)', line=dict(color=color, width=3)))
+    fig2.add_trace(go.Scatter(x=time_arr, y=control_metastasis, mode='lines', name='Metastasis (Ctrl)', line=dict(color='gray', dash='dash')))
+    fig2.add_trace(go.Scatter(x=time_arr, y=qq_metastasis, mode='lines', name='Metastasis (QQ)', line=dict(color=color, width=3)))
     fig2.update_layout(title="Metastasis Burden", template="plotly_white")
     st.plotly_chart(fig2, use_container_width=True)
 
@@ -194,7 +194,6 @@ with tab5:
         df = pd.DataFrame(st.session_state.history)
         st.dataframe(df, use_container_width=True)
         
-        # Plot comparison
         fig = go.Figure(data=[
             go.Bar(name='Gamma', x=df['ID'], y=df['Gamma'], marker_color=['red' if o == 'HARMFUL' else 'green' for o in df['Outcome']])
         ])
