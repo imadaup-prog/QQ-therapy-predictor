@@ -90,7 +90,7 @@ else:
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["⚡ Recommendation", "🎮 Sandbox", "🧠 XAI Brain", "🌐 3D Pathway", "📈 2D Simulation", "📊 Compare Patients"])
 
 # ==========================================
-# TAB 1: RECOMMENDATION (Vitals + Explanation)
+# TAB 1: RECOMMENDATION (Molecular Balance Scale)
 # ==========================================
 with tab1:
     col1, col2 = st.columns([1, 1])
@@ -103,24 +103,56 @@ with tab1:
         c1.markdown(f'<div class="metric-card"><div class="metric-value">{risk_pct}%</div><div class="metric-label">Adverse Risk</div></div>', unsafe_allow_html=True)
         c2.markdown(f'<div class="metric-card"><div class="metric-value">{gamma_effective:.2f}</div><div class="metric-label">Effective Gamma</div></div>', unsafe_allow_html=True)
         
-        # CORRECTED VITALS MONITOR
-        st.markdown("**Live Patient Biological Stress Monitor:**")
+        # --- MOLECULAR BALANCE SCALE ---
+        st.markdown("**Molecular Balance Scale (Host vs. Bacteria):**")
         st.markdown(f"""
         <div class="explain-box">
-        This monitor visualizes the patient's <b>biological stress level</b> driven by the PI3K/AKT pathway (Gamma). 
-        A <b>high BPM (e.g., >100)</b> means the pathway is highly activated (acting as a protective shield). 
-        A <b>low BPM (<80)</b> means the pathway is quiet (pro-metastatic).
+        This scale visualizes the battle in the tumor microenvironment. 
+        <b>Left side:</b> The bacterial aggression (F. nucleatum load). 
+        <b>Right side:</b> The host protective shield (Gamma). 
+        If the bacterial side is heavier, QQ therapy is protective. If the host side is heavier, QQ is harmful.
         </div>
         """, unsafe_allow_html=True)
         
-        # Heart rate now scales with Gamma (Biological Stress), not Risk
-        heart_rate = int(60 + (gamma_effective * 30))
+        # Calculate balance tilt (negative = bacteria heavy, positive = host heavy)
+        # Normalize values between -1 and 1 for the visual tilt
+        bacteria_weight = f_nucleatum_load * 1.5
+        host_weight = gamma_effective * 0.8
+        tilt = (host_weight - bacteria_weight) / 2.0 
         
-        pulse_data = np.sin(np.linspace(0, 20, 100)) * np.exp(-np.linspace(0, 5, 100))
-        fig_pulse = go.Figure(go.Scatter(y=pulse_data, mode='lines', line=dict(color=color, width=2)))
-        fig_pulse.update_layout(height=100, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="#ffffff", plot_bgcolor="#ffffff", xaxis=dict(visible=False), yaxis=dict(visible=False))
-        st.plotly_chart(fig_pulse, use_container_width=True)
-        st.markdown(f"<center><span style='color:{color}; font-size:20px;'>❤️ {heart_rate} BPM</span></center>", unsafe_allow_html=True)
+        # Draw the balance scale using Plotly shapes
+        fig_scale = go.Figure()
+        
+        # Base of the scale
+        fig_scale.add_shape(type="line", x0=0.5, y0=0, x1=0.5, y1=0.4, line=dict(color="black", width=6))
+        fig_scale.add_shape(type="line", x0=0.3, y0=0, x1=0.7, y1=0, line=dict(color="black", width=6))
+        
+        # The beam (tilted line)
+        x_left = 0.5 - 0.3 * np.cos(tilt)
+        y_left = 0.4 - 0.3 * np.sin(tilt)
+        x_right = 0.5 + 0.3 * np.cos(tilt)
+        y_right = 0.4 + 0.3 * np.sin(tilt)
+        fig_scale.add_shape(type="line", x0=x_left, y0=y_left, x1=x_right, y1=y_right, line=dict(color="#0b3d91", width=6))
+        
+        # Left Pan (Bacteria)
+        fig_scale.add_trace(go.Scatter(x=[x_left], y=[y_left-0.05], mode='markers+text', 
+                                       marker=dict(size=40, color='orange'), text=[f"F. nucleatum<br>{f_nucleatum_load:.2f}"],
+                                       textposition="bottom center", textfont=dict(size=12, color="black"), showlegend=False))
+        
+        # Right Pan (Host Shield / Gamma)
+        fig_scale.add_trace(go.Scatter(x=[x_right], y=[y_right-0.05], mode='markers+text', 
+                                       marker=dict(size=40, color=color), text=[f"Gamma Shield<br>{gamma_effective:.2f}"],
+                                       textposition="bottom center", textfont=dict(size=12, color="black"), showlegend=False))
+        
+        # Center pivot
+        fig_scale.add_trace(go.Scatter(x=[0.5], y=[0.4], mode='markers', marker=dict(size=15, color='gray'), showlegend=False))
+        
+        fig_scale.update_layout(
+            xaxis=dict(range=[0, 1], showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(range=[-0.1, 0.8], showgrid=False, zeroline=False, showticklabels=False),
+            plot_bgcolor="#ffffff", paper_bgcolor="#ffffff", height=250, margin=dict(l=0, r=0, t=0, b=0)
+        )
+        st.plotly_chart(fig_scale, use_container_width=True)
 
     with col2:
         st.subheader("Biological Reasoning")
