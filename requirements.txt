@@ -7,3 +7,4 @@ seaborn
 fpdf2
 scipy
 scikit-learn
+scikit-image
