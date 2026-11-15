@@ -167,20 +167,66 @@ with tab2:
         st.success(f"✅ **Result:** At Gamma = {sandbox_gamma:.2f} (below threshold of {threshold:.2f}), QQ therapy is **PROTECTIVE** because it blocks the pro-metastatic signal.")
 
 # ==========================================
-# TAB 3: XAI
+# TAB 3: XAI (Complete Waterfall with All Bars)
 # ==========================================
 with tab3:
-    st.subheader("🧠 AI Explainability (XAI)")
-    st.markdown("""<div class="explain-box"><b>What is this?</b> This Waterfall plot explains the "Brain" of the AI. It shows how each factor pushes risk UP (red) or DOWN (green).</div>""", unsafe_allow_html=True)
-    shap_values = {"F. nucleatum Load": f_nucleatum_load * 30, "PIK3CA Mutation": 15 if pik3ca == "Mutated" else 0, "Baseline Gamma": gamma_baseline * 10, "Sex (S0)": 10 if sex == "Female" else -5, "QQ Dose Effect": -20 if outcome == "PROTECTIVE" else 20}
+    st.subheader("🧠 AI Explainability (XAI) Brain Map")
+    st.markdown("""
+    <div class="explain-box">
+    <b>What is this?</b> This Waterfall plot explains the "Brain" of the AI. 
+    It starts at zero and shows how each biological factor <b>pushes</b> the patient's risk up (red bars) or down (green bars). 
+    The numbers on the bars show the exact percentage contribution. The final bar is the total predicted risk.
+    <br><br>
+    <b>Note:</b> Even if a mutation is absent (Wildtype), it is shown as a 0% bar so you can see it was evaluated.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Build SHAP values with explicit mutation status
+    mutation_label = f"PIK3CA ({pik3ca})"
+    mutation_value = 15 if pik3ca == "Mutated" else 0
+    
+    shap_values = {
+        "F. nucleatum Load": f_nucleatum_load * 30,
+        mutation_label: mutation_value,
+        "Baseline Gamma": gamma_baseline * 10,
+        f"Sex ({sex})": 10 if sex == "Female" else -5,
+        "QQ Dose Effect": -20 if outcome == "PROTECTIVE" else 20
+    }
+    
     fig_shap = go.Figure(go.Waterfall(
-        name="SHAP", orientation="v", measure=["relative", "relative", "relative", "relative", "relative", "total"],
-        x=list(shap_values.keys()) + ["Total Risk"], textposition="outside", text=[f"{v:+.1f}%" for v in shap_values.values()] + [f"{risk_pct}%"],
-        y=list(shap_values.values()) + [risk_pct], connector={"line": {"color": "rgb(63, 63, 63)"}},
-        decreasing={"marker":{"color":"#10b981"}}, increasing={"marker":{"color":"#ef4444"}}, totals={"marker":{"color":"#0ea5e9"}}
+        name="SHAP",
+        orientation="v",
+        measure=["relative", "relative", "relative", "relative", "relative", "total"],
+        x=list(shap_values.keys()) + ["Total Risk"],
+        textposition="outside",
+        text=[f"{v:+.1f}%" for v in shap_values.values()] + [f"{risk_pct}%"],
+        y=list(shap_values.values()) + [risk_pct],
+        connector={"line": {"color": "rgb(63, 63, 63)"}},
+        decreasing={"marker": {"color": "#10b981"}},
+        increasing={"marker": {"color": "#ef4444"}},
+        totals={"marker": {"color": "#0ea5e9"}}
     ))
-    fig_shap.update_layout(title="Feature Contribution to Risk", template="plotly_white", waterfallgap=0.3, height=500)
+    
+    fig_shap.update_layout(
+        title="Feature Contribution to Risk (All Factors Evaluated)",
+        template="plotly_white",
+        waterfallgap=0.3,
+        height=500,
+        xaxis_title="Biological Factor",
+        yaxis_title="Contribution to Risk (%)"
+    )
     st.plotly_chart(fig_shap, use_container_width=True)
+    
+    # Add a summary table below the graph
+    st.markdown("### Feature Contributions Summary")
+    summary_data = []
+    for factor, value in shap_values.items():
+        summary_data.append({
+            "Factor": factor,
+            "Contribution (%)": f"{value:+.1f}%",
+            "Direction": "↑ Increases Risk" if value > 0 else ("↓ Decreases Risk" if value < 0 else "No Effect")
+        })
+    st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
 
 # ==========================================
 # TAB 4: PATHWAY DIAGRAM (2D)
