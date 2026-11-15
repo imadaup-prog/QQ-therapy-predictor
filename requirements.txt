@@ -6,5 +6,4 @@ matplotlib
 seaborn
 fpdf2
 scipy
-streamlit-lottie
-requests
+scikit-learn
