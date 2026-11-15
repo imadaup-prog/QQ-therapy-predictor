@@ -5,13 +5,12 @@ import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import seaborn as sns
 from fpdf import FPDF
-import io
 import time
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="QuorumQuench AI", page_icon="🧬", layout="wide", initial_sidebar_state="expanded")
 
-# --- CUSTOM CSS FOR A PREMIUM LOOK ---
+# --- CUSTOM CSS ---
 st.markdown("""
     <style>
     .reportview-container { background: #f4f6f9; }
@@ -29,7 +28,7 @@ st.markdown("""
 # --- INITIALIZE SESSION STATE ---
 if 'history' not in st.session_state: st.session_state.history = []
 
-# --- PDF GENERATOR FUNCTION ---
+# --- PDF GENERATOR ---
 def generate_pdf(sex, pik3ca, gamma, f_nuc, outcome, risk):
     pdf = FPDF()
     pdf.add_page()
@@ -49,10 +48,9 @@ def generate_pdf(sex, pik3ca, gamma, f_nuc, outcome, risk):
     pdf.cell(200, 10, txt=f"Risk of Adverse Outcome: {risk}%", ln=True)
     pdf.ln(10)
     pdf.multi_cell(0, 10, txt="Disclaimer: This tool is for research purposes only and does not constitute medical advice.")
-    # CORRECTED LINE BELOW
     return bytes(pdf.output())
 
-# --- TITLE & TOUR ---
+# --- TITLE ---
 st.title("🧬 QuorumQuench AI")
 st.markdown("#### Integrated Host-Microbe Decision Support System")
 st.markdown("---")
@@ -105,14 +103,8 @@ with tab1:
         c1.markdown(f'<div class="metric-card"><div class="metric-value">{risk_pct}%</div><div class="metric-label">Adverse Risk</div></div>', unsafe_allow_html=True)
         c2.markdown(f'<div class="metric-card"><div class="metric-value">{gamma_effective:.2f}</div><div class="metric-label">Effective Gamma</div></div>', unsafe_allow_html=True)
         
-        # PDF Download Button
         pdf_bytes = generate_pdf(sex, pik3ca, gamma_effective, f_nucleatum_load, outcome, risk_pct)
-        st.download_button(
-            label="📄 Download Clinical PDF Report",
-            data=pdf_bytes,
-            file_name="QQ_Clinical_Report.pdf",
-            mime="application/pdf"
-        )
+        st.download_button("📄 Download Clinical PDF Report", data=pdf_bytes, file_name="QQ_Clinical_Report.pdf", mime="application/pdf")
 
     with col2:
         st.subheader("Biological Reasoning")
@@ -130,8 +122,7 @@ with tab1:
 # ==========================================
 with tab2:
     st.subheader("ODE Simulation: Host-Microbe Dynamics")
-    with st.spinner("Running ODE simulation..."):
-        time.sleep(0.5) 
+    with st.spinner("Running ODE simulation..."): time.sleep(0.5) 
         
     time_arr = np.linspace(0, 100, 100)
     b_growth = 1 / (1 + np.exp(-0.1 * (time_arr - 30))) * f_nucleatum_load
@@ -153,17 +144,54 @@ with tab2:
     st.plotly_chart(fig2, use_container_width=True)
 
 # ==========================================
-# TAB 3: PATHWAY VISUALIZATION
+# TAB 3: PATHWAY VISUALIZATION (FIXED & CLEAN)
 # ==========================================
 with tab3:
-    st.subheader("Dynamic Pathway")
+    st.subheader("Dynamic Biological Pathway")
+    st.markdown("This diagram shows the signaling cascade. The highlighted box represents the patient's current Effective Gamma.")
+
+    # Create a beautiful, spaced-out flowchart using Plotly
     fig = go.Figure()
-    nodes = [(0.1, 0.8, "F. nucleatum", "orange"), (0.3, 0.8, "Fap2/RadD", "orange"), (0.5, 0.7, "PI3K", "lightblue"), (0.7, 0.6, "AKT (Gamma)", "lightgreen"), (0.9, 0.6, "Metastasis", "red" if outcome == "HARMFUL" else "gray")]
-    for x, y, label, c in nodes:
-        fig.add_shape(type="rect", x0=x-0.05, y0=y-0.05, x1=x+0.05, y1=y+0.05, line=dict(color="black"), fillcolor=c)
-        fig.add_annotation(x=x, y=y, text=label, showarrow=False)
-    fig.add_annotation(x=0.7, y=0.4, text=f"Patient Gamma: {gamma_effective:.2f}", showarrow=True, arrowhead=1, ax=0, ay=-40)
-    fig.update_layout(showlegend=False, xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(showgrid=False, zeroline=False, showticklabels=False), height=400)
+
+    # Define node positions and labels
+    nodes = [
+        {"x": 1, "y": 0.5, "text": "<b>F. nucleatum</b><br>Load: {:.2f}".format(f_nucleatum_load), "color": "orange"},
+        {"x": 2.5, "y": 0.5, "text": "<b>Fap2 / RadD</b><br>(Virulence Factors)", "color": "orange"},
+        {"x": 4, "y": 0.5, "text": "<b>PI3K</b><br>(Activation)", "color": "lightblue"},
+        {"x": 5.5, "y": 0.5, "text": "<b>AKT (Gamma)</b><br>Score: {:.2f}".format(gamma_effective), "color": "lightgreen" if outcome == "PROTECTIVE" else "salmon"},
+        {"x": 7, "y": 0.5, "text": "<b>Metastasis</b><br>{}".format(rec), "color": "green" if outcome == "PROTECTIVE" else "red"}
+    ]
+
+    # Draw boxes
+    for n in nodes:
+        fig.add_trace(go.Scatter(
+            x=[n["x"]], y=[n["y"]],
+            mode="markers+text",
+            marker=dict(size=120, color=n["color"], line=dict(color="black", width=2)),
+            text=[n["text"]],
+            textposition="middle center",
+            textfont=dict(size=12, color="black"),
+            hoverinfo="text"
+        ))
+
+    # Draw arrows
+    for i in range(len(nodes)-1):
+        fig.add_annotation(
+            x=nodes[i+1]["x"] - 0.35, y=nodes[i+1]["y"],
+            ax=nodes[i]["x"] + 0.35, ay=nodes[i]["y"],
+            xref="x", yref="y", axref="x", ayref="y",
+            showarrow=True, arrowhead=3, arrowsize=2, arrowwidth=2, arrowcolor="gray"
+        )
+
+    # Formatting
+    fig.update_layout(
+        showlegend=False,
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0, 8]),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0, 1]),
+        plot_bgcolor="white",
+        height=400,
+        margin=dict(l=20, r=20, t=20, b=20)
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 # ==========================================
@@ -184,7 +212,7 @@ with tab4:
     st.pyplot(fig)
 
 # ==========================================
-# TAB 5: COMPARE PATIENTS (Clinical Trial Mode)
+# TAB 5: COMPARE PATIENTS
 # ==========================================
 with tab5:
     st.subheader("Clinical Trial Mode: Side-by-Side Comparison")
