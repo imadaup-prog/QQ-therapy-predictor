@@ -105,26 +105,66 @@ with tab1:
             st.success("Saved!")
 
 # ==========================================
-# TAB 2: SANDBOX
+# TAB 2: SANDBOX (Two Graphs Restored)
 # ==========================================
 with tab2:
-    st.subheader("🎮 Treatment Sandbox")
-    st.markdown("""<div class="explain-box"><b>How to use:</b> Adjust the sliders to simulate hypothetical patients. If the colored line goes UP, QQ is harmful. If it goes DOWN, QQ is protective.</div>""", unsafe_allow_html=True)
+    st.subheader("🎮 Treatment Sandbox: Real-Time What-If Analysis")
+    st.markdown("""
+    <div class="explain-box">
+    <b>How to use:</b> Adjust the sliders to simulate hypothetical patients. 
+    <br><b>Top Graph:</b> Shows how the QQ drug suppresses the bacterial load.
+    <br><b>Bottom Graph:</b> Shows the downstream effect on metastasis. 
+    If the colored line goes UP, QQ is harmful. If it goes DOWN, QQ is protective.
+    </div>
+    """, unsafe_allow_html=True)
+    
     sandbox_qq = st.slider("Adjust QQ Dose", 0.0, 1.5, qq_dose, 0.1)
     sandbox_gamma = st.slider("Adjust Gamma Level", 0.1, 2.0, gamma_effective, 0.1)
+    
     time_arr = np.linspace(0, 100, 100)
+    
+    # --- Graph 1: Bacterial Load ---
+    b_growth = 1 / (1 + np.exp(-0.1 * (time_arr - 30))) * f_nucleatum_load
+    b_qq = b_growth * (1 - 0.9 * sandbox_qq)
+    
+    fig_bacteria = go.Figure()
+    fig_bacteria.add_trace(go.Scatter(x=time_arr, y=b_growth, mode='lines', name='F. nucleatum (No QQ)', line=dict(color='orange', dash='dash', width=2)))
+    fig_bacteria.add_trace(go.Scatter(x=time_arr, y=b_qq, mode='lines', name='F. nucleatum (QQ Treated)', line=dict(color='purple', width=4)))
+    fig_bacteria.update_layout(
+        title="Bacterial Load Dynamics",
+        xaxis_title="Time (Days)",
+        yaxis_title="Relative Abundance",
+        template="plotly_white",
+        height=350
+    )
+    st.plotly_chart(fig_bacteria, use_container_width=True)
+    
+    # --- Graph 2: Metastasis ---
     control_metastasis = 1 / (1 + np.exp(-0.1 * (time_arr - 50))) 
     if sandbox_gamma > threshold:
-        sandbox_metastasis = control_metastasis * (1 + 0.5 * sandbox_qq * (sandbox_gamma - threshold)); sandbox_color = "#ef4444"
+        sandbox_metastasis = control_metastasis * (1 + 0.5 * sandbox_qq * (sandbox_gamma - threshold))
+        sandbox_color = "#ef4444"
     else:
-        sandbox_metastasis = control_metastasis * (1 - 0.8 * sandbox_qq); sandbox_color = "#10b981"
-    fig_sandbox = go.Figure()
-    fig_sandbox.add_trace(go.Scatter(x=time_arr, y=control_metastasis, name='No QQ', line=dict(color='gray', dash='dash')))
-    fig_sandbox.add_trace(go.Scatter(x=time_arr, y=sandbox_metastasis, name='QQ Treated', line=dict(color=sandbox_color, width=4)))
-    fig_sandbox.update_layout(title="Real-Time Metastasis Trajectory", template="plotly_white", height=400)
-    st.plotly_chart(fig_sandbox, use_container_width=True)
-    if sandbox_gamma > threshold: st.error(f"⚠️ At Gamma = {sandbox_gamma:.2f}, QQ is HARMFUL.")
-    else: st.success(f"✅ At Gamma = {sandbox_gamma:.2f}, QQ is PROTECTIVE.")
+        sandbox_metastasis = control_metastasis * (1 - 0.8 * sandbox_qq)
+        sandbox_color = "#10b981"
+    
+    fig_metastasis = go.Figure()
+    fig_metastasis.add_trace(go.Scatter(x=time_arr, y=control_metastasis, mode='lines', name='Metastasis (No QQ)', line=dict(color='gray', dash='dash', width=2)))
+    fig_metastasis.add_trace(go.Scatter(x=time_arr, y=sandbox_metastasis, mode='lines', name='Metastasis (QQ Treated)', line=dict(color=sandbox_color, width=4)))
+    fig_metastasis.update_layout(
+        title="Metastasis Burden",
+        xaxis_title="Time (Days)",
+        yaxis_title="Metastasis Burden",
+        template="plotly_white",
+        height=350
+    )
+    st.plotly_chart(fig_metastasis, use_container_width=True)
+    
+    # --- Result ---
+    if sandbox_gamma > threshold:
+        st.error(f"⚠️ **Result:** At Gamma = {sandbox_gamma:.2f} (above threshold of {threshold:.2f}), QQ therapy is **HARMFUL** because it removes the protective pathway.")
+    else:
+        st.success(f"✅ **Result:** At Gamma = {sandbox_gamma:.2f} (below threshold of {threshold:.2f}), QQ therapy is **PROTECTIVE** because it blocks the pro-metastatic signal.")
 
 # ==========================================
 # TAB 3: XAI
