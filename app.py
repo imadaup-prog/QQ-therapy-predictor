@@ -2,26 +2,27 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 import matplotlib.pyplot as plt
-import seaborn as sns
 from fpdf import FPDF
 import time
+from scipy.interpolate import griddata
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="QuorumQuench AI", page_icon="🧬", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="QuorumQuench AI 3D", page_icon="🧬", layout="wide")
 
-# --- CUSTOM CSS ---
+# --- CUSTOM CSS FOR DARK PREMIUM THEME ---
 st.markdown("""
     <style>
-    .reportview-container { background: #f4f6f9; }
-    h1, h2, h3 { color: #0b3d91; font-family: 'Helvetica Neue', sans-serif; }
-    .metric-card { background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; }
-    .metric-value { font-size: 2.5rem; font-weight: bold; color: #0b3d91; }
-    .metric-label { font-size: 1rem; color: #6c757d; }
-    .stButton>button { width: 100%; height: 3em; font-size: 18px; font-weight: bold; background-color: #1f77b4; color: white; border-radius: 8px; }
+    .stApp { background-color: #0e1117; color: #ffffff; }
+    h1, h2, h3 { color: #4da6ff; font-family: 'Helvetica Neue', sans-serif; }
+    .metric-card { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 20px; border-radius: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); text-align: center; margin-bottom: 20px; border: 1px solid #4da6ff; }
+    .metric-value { font-size: 2.5rem; font-weight: bold; color: #ffffff; }
+    .metric-label { font-size: 1rem; color: #b0c4de; }
+    .stButton>button { width: 100%; height: 3em; font-size: 18px; font-weight: bold; background: linear-gradient(90deg, #1f77b4, #00d4ff); color: white; border-radius: 8px; border: none; }
     .stTabs [data-baseweb="tab-list"] { gap: 24px; }
-    .stTabs [data-baseweb="tab"] { height: 50px; white-space: pre-wrap; background-color: #e9ecef; border-radius: 4px 4px 0 0; padding-top: 10px; padding-bottom: 10px; }
-    .stTabs [aria-selected="true"] { background-color: #ffffff; font-weight: bold; color: #0b3d91; border-bottom: 3px solid #0b3d91; }
+    .stTabs [data-baseweb="tab"] { height: 50px; background-color: #1e1e1e; color: #ffffff; border-radius: 4px 4px 0 0; }
+    .stTabs [aria-selected="true"] { background-color: #2a5298; font-weight: bold; color: #00d4ff; border-bottom: 3px solid #00d4ff; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -51,7 +52,7 @@ def generate_pdf(sex, pik3ca, gamma, f_nuc, outcome, risk):
     return bytes(pdf.output())
 
 # --- TITLE ---
-st.title("🧬 QuorumQuench AI")
+st.title("🧬 QuorumQuench AI: 3D Advanced Dashboard")
 st.markdown("#### Integrated Host-Microbe Decision Support System")
 st.markdown("---")
 
@@ -76,18 +77,18 @@ if pik3ca == "Mutated": threshold -= 0.1
 if gamma_effective > threshold:
     outcome = "HARMFUL"
     risk_pct = min(95, int((gamma_effective - threshold) * 100 + 50))
-    color = "red"
+    color = "#ff4b4b" # Red
     icon = "❌"
     rec = "DO NOT GIVE QQ THERAPY"
 else:
     outcome = "PROTECTIVE"
     risk_pct = min(95, int((threshold - gamma_effective) * 100 + 50))
-    color = "green"
+    color = "#00d4ff" # Cyan/Green
     icon = "✅"
     rec = "GIVE QQ THERAPY"
 
 # --- TABS ---
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Recommendation", "📈 Simulation", "🧬 Pathway", "🔬 Validation", "📊 Compare Patients"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Recommendation", "📈 2D Simulation", "🌐 3D Pathway & Surface", "🔬 Validation", "📊 Compare Patients"])
 
 # ==========================================
 # TAB 1: CLINICAL RECOMMENDATION
@@ -118,7 +119,7 @@ with tab1:
             st.success("Saved!")
 
 # ==========================================
-# TAB 2: LIVE SIMULATION
+# TAB 2: 2D SIMULATION
 # ==========================================
 with tab2:
     st.subheader("ODE Simulation: Host-Microbe Dynamics")
@@ -134,65 +135,101 @@ with tab2:
     fig1 = go.Figure()
     fig1.add_trace(go.Scatter(x=time_arr, y=b_growth, mode='lines', name='F. nucleatum (Ctrl)', line=dict(color='orange', dash='dash')))
     fig1.add_trace(go.Scatter(x=time_arr, y=b_qq, mode='lines', name='F. nucleatum (QQ)', line=dict(color='purple', width=3)))
-    fig1.update_layout(title="Bacterial Load Dynamics", template="plotly_white")
+    fig1.update_layout(title="Bacterial Load Dynamics", template="plotly_dark")
     st.plotly_chart(fig1, use_container_width=True)
 
     fig2 = go.Figure()
     fig2.add_trace(go.Scatter(x=time_arr, y=control_metastasis, mode='lines', name='Metastasis (Ctrl)', line=dict(color='gray', dash='dash')))
     fig2.add_trace(go.Scatter(x=time_arr, y=qq_metastasis, mode='lines', name='Metastasis (QQ)', line=dict(color=color, width=3)))
-    fig2.update_layout(title="Metastasis Burden", template="plotly_white")
+    fig2.update_layout(title="Metastasis Burden", template="plotly_dark")
     st.plotly_chart(fig2, use_container_width=True)
 
 # ==========================================
-# TAB 3: PATHWAY VISUALIZATION (FIXED & CLEAN)
+# TAB 3: 3D PATHWAY & SURFACE (THE WOW FACTOR)
 # ==========================================
 with tab3:
-    st.subheader("Dynamic Biological Pathway")
-    st.markdown("This diagram shows the signaling cascade. The highlighted box represents the patient's current Effective Gamma.")
+    st.subheader("3D Interactive Biological Pathway")
+    st.markdown("Use your mouse to **rotate, zoom, and pan** this 3D network. The glowing nodes represent the pathway components.")
 
-    # Create a beautiful, spaced-out flowchart using Plotly
-    fig = go.Figure()
-
-    # Define node positions and labels
-    nodes = [
-        {"x": 1, "y": 0.5, "text": "<b>F. nucleatum</b><br>Load: {:.2f}".format(f_nucleatum_load), "color": "orange"},
-        {"x": 2.5, "y": 0.5, "text": "<b>Fap2 / RadD</b><br>(Virulence Factors)", "color": "orange"},
-        {"x": 4, "y": 0.5, "text": "<b>PI3K</b><br>(Activation)", "color": "lightblue"},
-        {"x": 5.5, "y": 0.5, "text": "<b>AKT (Gamma)</b><br>Score: {:.2f}".format(gamma_effective), "color": "lightgreen" if outcome == "PROTECTIVE" else "salmon"},
-        {"x": 7, "y": 0.5, "text": "<b>Metastasis</b><br>{}".format(rec), "color": "green" if outcome == "PROTECTIVE" else "red"}
+    # Create 3D Network Graph
+    nodes_3d = [
+        {"x": 0, "y": 0, "z": 0, "text": f"<b>F. nucleatum</b><br>Load: {f_nucleatum_load:.2f}", "color": "orange", "size": 15},
+        {"x": 2, "y": 1, "z": 1, "text": "<b>Fap2 / RadD</b><br>(Virulence)", "color": "orange", "size": 12},
+        {"x": 4, "y": 0, "z": 2, "text": "<b>PI3K</b><br>(Activation)", "color": "lightblue", "size": 12},
+        {"x": 6, "y": 1, "z": 1, "text": f"<b>AKT (Gamma)</b><br>Score: {gamma_effective:.2f}", "color": "#00ff00" if outcome == "PROTECTIVE" else "#ff4b4b", "size": 18},
+        {"x": 8, "y": 0, "z": 0, "text": f"<b>Metastasis</b><br>{rec}", "color": "#00ff00" if outcome == "PROTECTIVE" else "#ff4b4b", "size": 15}
     ]
 
-    # Draw boxes
-    for n in nodes:
-        fig.add_trace(go.Scatter(
-            x=[n["x"]], y=[n["y"]],
-            mode="markers+text",
-            marker=dict(size=120, color=n["color"], line=dict(color="black", width=2)),
-            text=[n["text"]],
-            textposition="middle center",
-            textfont=dict(size=12, color="black"),
-            hoverinfo="text"
+    fig_3d = go.Figure()
+
+    # Draw edges (lines between nodes)
+    for i in range(len(nodes_3d)-1):
+        fig_3d.add_trace(go.Scatter3d(
+            x=[nodes_3d[i]["x"], nodes_3d[i+1]["x"]],
+            y=[nodes_3d[i]["y"], nodes_3d[i+1]["y"]],
+            z=[nodes_3d[i]["z"], nodes_3d[i+1]["z"]],
+            mode='lines',
+            line=dict(color='gray', width=4),
+            showlegend=False
         ))
 
-    # Draw arrows
-    for i in range(len(nodes)-1):
-        fig.add_annotation(
-            x=nodes[i+1]["x"] - 0.35, y=nodes[i+1]["y"],
-            ax=nodes[i]["x"] + 0.35, ay=nodes[i]["y"],
-            xref="x", yref="y", axref="x", ayref="y",
-            showarrow=True, arrowhead=3, arrowsize=2, arrowwidth=2, arrowcolor="gray"
-        )
+    # Draw nodes (spheres)
+    for n in nodes_3d:
+        fig_3d.add_trace(go.Scatter3d(
+            x=[n["x"]], y=[n["y"]], z=[n["z"]],
+            mode='markers+text',
+            marker=dict(size=n["size"], color=n["color"], opacity=0.8, line=dict(color='white', width=1)),
+            text=[n["text"]],
+            textposition="top center",
+            textfont=dict(size=12, color="white"),
+            showlegend=False
+        ))
 
-    # Formatting
-    fig.update_layout(
-        showlegend=False,
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0, 8]),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0, 1]),
-        plot_bgcolor="white",
-        height=400,
-        margin=dict(l=20, r=20, t=20, b=20)
+    fig_3d.update_layout(
+        scene=dict(
+            xaxis=dict(showbackground=False, showticklabels=False, title=''),
+            yaxis=dict(showbackground=False, showticklabels=False, title=''),
+            zaxis=dict(showbackground=False, showticklabels=False, title=''),
+            bgcolor="#0e1117"
+        ),
+        paper_bgcolor="#0e1117",
+        margin=dict(l=0, r=0, b=0, t=0),
+        height=500
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig_3d, use_container_width=True)
+
+    st.markdown("---")
+    st.subheader("3D Metastasis Landscape")
+    st.markdown("This 3D surface shows how Metastasis Burden changes across different combinations of **Gamma** and **F. nucleatum Load**. Your patient is marked with a **Red Dot**.")
+
+    # Generate 3D Surface Data
+    g_range = np.linspace(0.1, 2.0, 30)
+    f_range = np.linspace(0.0, 1.0, 30)
+    G, F = np.meshgrid(g_range, f_range)
+    M = 1 / (1 + np.exp(-2 * (G + 0.5*F - 1.0))) # Mock metastasis function
+
+    fig_surface = go.Figure(data=[go.Surface(z=M, x=g_range, y=f_range, colorscale='Viridis', opacity=0.8)])
+
+    # Add patient dot
+    fig_surface.add_trace(go.Scatter3d(
+        x=[gamma_effective], y=[f_nucleatum_load], z=[1 / (1 + np.exp(-2 * (gamma_effective + 0.5*f_nucleatum_load - 1.0)))],
+        mode='markers',
+        marker=dict(size=8, color='red', symbol='cross'),
+        name='Current Patient'
+    ))
+
+    fig_surface.update_layout(
+        scene=dict(
+            xaxis_title='Gamma (p-AKT)',
+            yaxis_title='F. nucleatum Load',
+            zaxis_title='Metastasis Burden',
+            bgcolor="#0e1117"
+        ),
+        paper_bgcolor="#0e1117",
+        margin=dict(l=0, r=0, b=0, t=0),
+        height=500
+    )
+    st.plotly_chart(fig_surface, use_container_width=True)
 
 # ==========================================
 # TAB 4: VALIDATION
@@ -200,6 +237,13 @@ with tab3:
 with tab4:
     st.subheader("TCGA COAD Validation (n=500)")
     fig, ax = plt.subplots(figsize=(8, 4))
+    fig.patch.set_facecolor('#0e1117')
+    ax.set_facecolor('#0e1117')
+    ax.tick_params(colors='white')
+    ax.xaxis.label.set_color('white')
+    ax.yaxis.label.set_color('white')
+    ax.title.set_color('#4da6ff')
+
     t = np.linspace(0, 150, 100)
     ax.plot(t, np.exp(-0.01*t), color='#C44E52', label='Mutated_High')
     ax.plot(t, np.exp(-0.015*t), color='#DD8452', label='Mutated_Low')
@@ -208,7 +252,7 @@ with tab4:
     ax.set_title("Two-Hit Hypothesis: Survival")
     ax.set_xlabel("Time (Months)")
     ax.set_ylabel("Survival Probability")
-    ax.legend()
+    ax.legend(facecolor='#0e1117', labelcolor='white')
     st.pyplot(fig)
 
 # ==========================================
@@ -223,11 +267,11 @@ with tab5:
         st.dataframe(df, use_container_width=True)
         
         fig = go.Figure(data=[
-            go.Bar(name='Gamma', x=df['ID'], y=df['Gamma'], marker_color=['red' if o == 'HARMFUL' else 'green' for o in df['Outcome']])
+            go.Bar(name='Gamma', x=df['ID'], y=df['Gamma'], marker_color=['#ff4b4b' if o == 'HARMFUL' else '#00d4ff' for o in df['Outcome']])
         ])
-        fig.update_layout(title="Gamma Comparison Across Saved Patients", xaxis_title="Patient ID", yaxis_title="Effective Gamma")
+        fig.update_layout(title="Gamma Comparison Across Saved Patients", xaxis_title="Patient ID", yaxis_title="Effective Gamma", template="plotly_dark")
         st.plotly_chart(fig, use_container_width=True)
 
 # --- FOOTER ---
 st.markdown("---")
-st.caption("QuorumQuench AI | Advanced Clinical Version | Developed by Muhammad Imad Khan Khalil")
+st.caption("QuorumQuench AI | Advanced 3D Version | Developed by Muhammad Imad Khan Khalil")
