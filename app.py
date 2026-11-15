@@ -4,7 +4,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 from fpdf import FPDF
-import time
 import io
 
 # --- PAGE CONFIGURATION ---
@@ -22,7 +21,7 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] { gap: 24px; }
     .stTabs [data-baseweb="tab"] { height: 50px; white-space: pre-wrap; background-color: #e9ecef; border-radius: 4px 4px 0 0; padding-top: 10px; padding-bottom: 10px; }
     .stTabs [aria-selected="true"] { background-color: #ffffff; font-weight: bold; color: #0b3d91; border-bottom: 3px solid #0b3d91; }
-    .explain-box { background-color: #fff; border-left: 5px solid #0b3d91; padding: 15px; margin-top: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .explain-box { background-color: #ffffff; border-left: 5px solid #0b3d91; padding: 15px; margin-top: 15px; margin-bottom: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); font-size: 14px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -48,7 +47,7 @@ def generate_pdf(sex, pik3ca, gamma, f_nuc, outcome, risk):
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=f"Risk of Adverse Outcome: {risk}%", ln=True)
     pdf.ln(10)
-    pdf.multi_cell(0, 10, txt="Disclaimer: This tool is for research purposes only.")
+    pdf.multi_cell(0, 10, txt="Disclaimer: This tool is for research purposes only and does not constitute medical advice.")
     return bytes(pdf.output())
 
 # --- TITLE ---
@@ -104,16 +103,19 @@ with tab1:
         c1.markdown(f'<div class="metric-card"><div class="metric-value">{risk_pct}%</div><div class="metric-label">Adverse Risk</div></div>', unsafe_allow_html=True)
         c2.markdown(f'<div class="metric-card"><div class="metric-value">{gamma_effective:.2f}</div><div class="metric-label">Effective Gamma</div></div>', unsafe_allow_html=True)
         
-        # Vitals Monitor
-        st.markdown("**Live Patient Status Monitor:**")
+        # CORRECTED VITALS MONITOR
+        st.markdown("**Live Patient Biological Stress Monitor:**")
         st.markdown(f"""
         <div class="explain-box">
-        The simulated heart rate increases as the predicted <b>risk of adverse outcome</b> rises. 
-        A high BPM (e.g., >90) indicates the model predicts a high-stress biological state where QQ therapy is likely to be harmful.
+        This monitor visualizes the patient's <b>biological stress level</b> driven by the PI3K/AKT pathway (Gamma). 
+        A <b>high BPM (e.g., >100)</b> means the pathway is highly activated (acting as a protective shield). 
+        A <b>low BPM (<80)</b> means the pathway is quiet (pro-metastatic).
         </div>
         """, unsafe_allow_html=True)
         
-        heart_rate = 60 + int(risk_pct / 2)
+        # Heart rate now scales with Gamma (Biological Stress), not Risk
+        heart_rate = int(60 + (gamma_effective * 30))
+        
         pulse_data = np.sin(np.linspace(0, 20, 100)) * np.exp(-np.linspace(0, 5, 100))
         fig_pulse = go.Figure(go.Scatter(y=pulse_data, mode='lines', line=dict(color=color, width=2)))
         fig_pulse.update_layout(height=100, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="#ffffff", plot_bgcolor="#ffffff", xaxis=dict(visible=False), yaxis=dict(visible=False))
@@ -203,8 +205,6 @@ with tab3:
     ))
     fig_shap.update_layout(title="Feature Contribution to Risk", template="plotly_white", waterfallgap=0.3)
     st.plotly_chart(fig_shap, use_container_width=True)
-
-    st.info("**Interpretation:** Positive values (red) push the patient toward an adverse outcome. Negative values (green) push toward a protective outcome. The 'QQ Dose Effect' is the intervention we are testing.")
 
 # ==========================================
 # TAB 4: 3D PATHWAY
@@ -303,7 +303,6 @@ with tab6:
             ))
             
         # Add the threshold line
-        fig_compare.add_hline(y=0, line_dash="dot", line_color="gray")
         fig_compare.add_vline(x=threshold, line_dash="dash", line_color="red", annotation_text="Threshold")
         
         fig_compare.update_layout(
