@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
-import seaborn as sns
 from fpdf import FPDF
 import time
 import io
@@ -11,7 +10,7 @@ import io
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="QuorumQuench AI", page_icon="🧬", layout="wide")
 
-# --- CUSTOM CSS (Light Theme) ---
+# --- CUSTOM CSS ---
 st.markdown("""
     <style>
     .stApp { background-color: #f4f6f9; }
@@ -23,6 +22,7 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] { gap: 24px; }
     .stTabs [data-baseweb="tab"] { height: 50px; white-space: pre-wrap; background-color: #e9ecef; border-radius: 4px 4px 0 0; padding-top: 10px; padding-bottom: 10px; }
     .stTabs [aria-selected="true"] { background-color: #ffffff; font-weight: bold; color: #0b3d91; border-bottom: 3px solid #0b3d91; }
+    .explain-box { background-color: #fff; border-left: 5px solid #0b3d91; padding: 15px; margin-top: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
     """, unsafe_allow_html=True)
 
@@ -48,7 +48,7 @@ def generate_pdf(sex, pik3ca, gamma, f_nuc, outcome, risk):
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=f"Risk of Adverse Outcome: {risk}%", ln=True)
     pdf.ln(10)
-    pdf.multi_cell(0, 10, txt="Disclaimer: This tool is for research purposes only and does not constitute medical advice.")
+    pdf.multi_cell(0, 10, txt="Disclaimer: This tool is for research purposes only.")
     return bytes(pdf.output())
 
 # --- TITLE ---
@@ -88,10 +88,10 @@ else:
     rec = "GIVE QQ THERAPY"
 
 # --- TABS ---
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["⚡ AI Recommendation", "🎮 Sandbox", "🧠 XAI Brain", "🌐 3D Pathway", "📈 2D Simulation", "📊 Compare Patients"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["⚡ Recommendation", "🎮 Sandbox", "🧠 XAI Brain", "🌐 3D Pathway", "📈 2D Simulation", "📊 Compare Patients"])
 
 # ==========================================
-# TAB 1: AI RECOMMENDATION (With Vitals)
+# TAB 1: RECOMMENDATION (Vitals + Explanation)
 # ==========================================
 with tab1:
     col1, col2 = st.columns([1, 1])
@@ -104,8 +104,15 @@ with tab1:
         c1.markdown(f'<div class="metric-card"><div class="metric-value">{risk_pct}%</div><div class="metric-label">Adverse Risk</div></div>', unsafe_allow_html=True)
         c2.markdown(f'<div class="metric-card"><div class="metric-value">{gamma_effective:.2f}</div><div class="metric-label">Effective Gamma</div></div>', unsafe_allow_html=True)
         
-        # Live Heartbeat
+        # Vitals Monitor
         st.markdown("**Live Patient Status Monitor:**")
+        st.markdown(f"""
+        <div class="explain-box">
+        The simulated heart rate increases as the predicted <b>risk of adverse outcome</b> rises. 
+        A high BPM (e.g., >90) indicates the model predicts a high-stress biological state where QQ therapy is likely to be harmful.
+        </div>
+        """, unsafe_allow_html=True)
+        
         heart_rate = 60 + int(risk_pct / 2)
         pulse_data = np.sin(np.linspace(0, 20, 100)) * np.exp(-np.linspace(0, 5, 100))
         fig_pulse = go.Figure(go.Scatter(y=pulse_data, mode='lines', line=dict(color=color, width=2)))
@@ -124,7 +131,7 @@ with tab1:
         st.download_button("📄 Download Clinical PDF Report", data=pdf_bytes, file_name="QQ_Clinical_Report.pdf", mime="application/pdf")
         
         if st.button("💾 Save to Patient History"):
-            st.session_state.history.append({"ID": len(st.session_state.history)+1, "Sex": sex, "PIK3CA": pik3ca, "Gamma": gamma_effective, "Outcome": outcome})
+            st.session_state.history.append({"ID": len(st.session_state.history)+1, "Sex": sex, "PIK3CA": pik3ca, "Gamma": round(gamma_effective, 2), "F. nucleatum": round(f_nucleatum_load, 2), "Outcome": outcome, "Risk": f"{risk_pct}%"})
             st.success("Saved to history!")
 
 # ==========================================
@@ -132,8 +139,16 @@ with tab1:
 # ==========================================
 with tab2:
     st.subheader("🎮 Treatment Sandbox: Real-Time What-If Analysis")
-    sandbox_qq = st.slider("Adjust QQ Dose (Sandbox Mode)", 0.0, 1.5, qq_dose, 0.1)
-    sandbox_gamma = st.slider("Adjust Gamma Level (Sandbox Mode)", 0.1, 2.0, gamma_effective, 0.1)
+    st.markdown("""
+    <div class="explain-box">
+    <b>How to use:</b> Adjust the sandbox sliders to simulate hypothetical patients. 
+    Watch how the "Metastasis Trajectory" curve changes. 
+    If the curve goes <b>UP</b>, QQ is harmful. If it goes <b>DOWN</b>, QQ is protective.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    sandbox_qq = st.slider("Adjust QQ Dose (Sandbox)", 0.0, 1.5, qq_dose, 0.1)
+    sandbox_gamma = st.slider("Adjust Gamma Level (Sandbox)", 0.1, 2.0, gamma_effective, 0.1)
     
     time_arr = np.linspace(0, 100, 100)
     control_metastasis = 1 / (1 + np.exp(-0.1 * (time_arr - 50))) 
@@ -146,21 +161,29 @@ with tab2:
         sandbox_color = "#00d4ff"
 
     fig_sandbox = go.Figure()
-    fig_sandbox.add_trace(go.Scatter(x=time_arr, y=control_metastasis, mode='lines', name='Metastasis (Ctrl)', line=dict(color='gray', dash='dash')))
-    fig_sandbox.add_trace(go.Scatter(x=time_arr, y=sandbox_metastasis, mode='lines', name='Metastasis (Sandbox QQ)', line=dict(color=sandbox_color, width=4)))
+    fig_sandbox.add_trace(go.Scatter(x=time_arr, y=control_metastasis, mode='lines', name='Metastasis (No QQ)', line=dict(color='gray', dash='dash')))
+    fig_sandbox.add_trace(go.Scatter(x=time_arr, y=sandbox_metastasis, mode='lines', name='Metastasis (QQ Treated)', line=dict(color=sandbox_color, width=4)))
     fig_sandbox.update_layout(title="Real-Time Metastasis Trajectory", template="plotly_white", height=400)
     st.plotly_chart(fig_sandbox, use_container_width=True)
     
     if sandbox_gamma > threshold:
-        st.error(f"⚠️ At this Gamma level ({sandbox_gamma:.2f}), QQ is HARMFUL.")
+        st.error(f"⚠️ **Result:** At Gamma = {sandbox_gamma:.2f}, QQ therapy is **HARMFUL** because it removes the protective pathway.")
     else:
-        st.success(f"✅ At this Gamma level ({sandbox_gamma:.2f}), QQ is PROTECTIVE.")
+        st.success(f"✅ **Result:** At Gamma = {sandbox_gamma:.2f}, QQ therapy is **PROTECTIVE** because it blocks the pro-metastatic signal.")
 
 # ==========================================
 # TAB 3: EXPLAINABILITY (XAI)
 # ==========================================
 with tab3:
     st.subheader("🧠 AI Explainability (XAI) Brain Map")
+    st.markdown("""
+    <div class="explain-box">
+    <b>What is this?</b> This Waterfall plot explains the "Brain" of the AI. 
+    It starts at zero and shows how each biological factor <b>pushes</b> the patient's risk up (red) or down (green). 
+    The final bar is the total predicted risk.
+    </div>
+    """, unsafe_allow_html=True)
+    
     shap_values = {
         "F. nucleatum Load": f_nucleatum_load * 30,
         "PIK3CA Mutation": 15 if pik3ca == "Mutated" else 0,
@@ -168,6 +191,7 @@ with tab3:
         "Sex (S0)": 10 if sex == "Female" else -5,
         "QQ Dose Effect": -20 if outcome == "PROTECTIVE" else 20
     }
+    
     fig_shap = go.Figure(go.Waterfall(
         name="SHAP", orientation="v",
         measure=["relative", "relative", "relative", "relative", "relative", "total"],
@@ -180,12 +204,24 @@ with tab3:
     fig_shap.update_layout(title="Feature Contribution to Risk", template="plotly_white", waterfallgap=0.3)
     st.plotly_chart(fig_shap, use_container_width=True)
 
+    st.info("**Interpretation:** Positive values (red) push the patient toward an adverse outcome. Negative values (green) push toward a protective outcome. The 'QQ Dose Effect' is the intervention we are testing.")
+
 # ==========================================
-# TAB 4: 3D PATHWAY (Restored & Fixed)
+# TAB 4: 3D PATHWAY
 # ==========================================
 with tab4:
-    st.subheader("3D Interactive Biological Pathway")
-    st.markdown("Use your mouse to **rotate, zoom, and pan** this 3D network.")
+    st.subheader("🌐 3D Interactive Biological Pathway")
+    st.markdown("""
+    <div class="explain-box">
+    <b>Step-by-Step Activation:</b><br>
+    1. <b>F. nucleatum</b> (orange) adheres to the colon via Fap2.<br>
+    2. <b>Virulence Factors</b> (orange) are injected into the host cell.<br>
+    3. <b>PI3K</b> (blue) is activated.<br>
+    4. <b>AKT (Gamma)</b> (glowing) is phosphorylated, creating the 'protective shield'.<br>
+    5. <b>Metastasis</b> (green/red) is the final outcome.<br>
+    <i>Rotate the 3D graph to see the spatial relationship.</i>
+    </div>
+    """, unsafe_allow_html=True)
     
     nodes_3d = [
         {"x": 0, "y": 0, "z": 0, "text": f"<b>F. nucleatum</b><br>Load: {f_nucleatum_load:.2f}", "color": "orange", "size": 15},
@@ -203,10 +239,19 @@ with tab4:
     st.plotly_chart(fig_3d, use_container_width=True)
 
 # ==========================================
-# TAB 5: 2D SIMULATION (Restored)
+# TAB 5: 2D SIMULATION (Advanced ODE)
 # ==========================================
 with tab5:
-    st.subheader("ODE Simulation: Host-Microbe Dynamics")
+    st.subheader("📈 Advanced ODE Simulation: Host-Microbe Dynamics")
+    st.markdown("""
+    <div class="explain-box">
+    <b>What is happening here?</b><br>
+    The <b>Top Graph</b> shows how the bacterial population grows over time (orange) and how QQ treatment suppresses it (purple).<br>
+    The <b>Bottom Graph</b> shows the downstream effect on metastasis. If QQ successfully suppresses the bacteria, the metastasis curve drops.<br>
+    <b>Key Insight:</b> If the patient has high Gamma, QQ causes the metastasis curve to spike (red line) because the protective shield is removed.
+    </div>
+    """, unsafe_allow_html=True)
+    
     time_arr = np.linspace(0, 100, 100)
     b_growth = 1 / (1 + np.exp(-0.1 * (time_arr - 30))) * f_nucleatum_load
     b_qq = b_growth * (1 - 0.9 * qq_dose)
@@ -215,33 +260,69 @@ with tab5:
     else: qq_metastasis = control_metastasis * (1 + 0.5 * qq_dose * (gamma_effective - threshold))
 
     fig1 = go.Figure()
-    fig1.add_trace(go.Scatter(x=time_arr, y=b_growth, mode='lines', name='F. nucleatum (Ctrl)', line=dict(color='orange', dash='dash')))
-    fig1.add_trace(go.Scatter(x=time_arr, y=b_qq, mode='lines', name='F. nucleatum (QQ)', line=dict(color='purple', width=3)))
+    fig1.add_trace(go.Scatter(x=time_arr, y=b_growth, mode='lines', name='F. nucleatum (No QQ)', line=dict(color='orange', dash='dash')))
+    fig1.add_trace(go.Scatter(x=time_arr, y=b_qq, mode='lines', name='F. nucleatum (QQ Treated)', line=dict(color='purple', width=3)))
     fig1.update_layout(title="Bacterial Load Dynamics", template="plotly_white")
     st.plotly_chart(fig1, use_container_width=True)
 
     fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(x=time_arr, y=control_metastasis, mode='lines', name='Metastasis (Ctrl)', line=dict(color='gray', dash='dash')))
-    fig2.add_trace(go.Scatter(x=time_arr, y=qq_metastasis, mode='lines', name='Metastasis (QQ)', line=dict(color=color, width=3)))
+    fig2.add_trace(go.Scatter(x=time_arr, y=control_metastasis, mode='lines', name='Metastasis (No QQ)', line=dict(color='gray', dash='dash')))
+    fig2.add_trace(go.Scatter(x=time_arr, y=qq_metastasis, mode='lines', name='Metastasis (QQ Treated)', line=dict(color=color, width=3)))
     fig2.update_layout(title="Metastasis Burden", template="plotly_white")
     st.plotly_chart(fig2, use_container_width=True)
 
 # ==========================================
-# TAB 6: COMPARE PATIENTS (Restored)
+# TAB 6: COMPARE PATIENTS (Advanced Clinical Trial Mode)
 # ==========================================
 with tab6:
-    st.subheader("Clinical Trial Mode: Side-by-Side Comparison")
+    st.subheader("📊 Clinical Trial Mode: Side-by-Side Comparison")
+    st.markdown("""
+    <div class="explain-box">
+    <b>How to use:</b> Save at least 2 patients in Tab 1. 
+    This tab will generate a <b>Scatter Plot</b> showing how the patients cluster based on their Gamma and F. nucleatum load. 
+    It also provides a statistical summary of the cohort.
+    </div>
+    """, unsafe_allow_html=True)
+    
     if len(st.session_state.history) < 2:
         st.info("Please save at least 2 patients to the history (Tab 1) to compare them.")
     else:
         df = pd.DataFrame(st.session_state.history)
-        st.dataframe(df, use_container_width=True)
         
-        fig = go.Figure(data=[
-            go.Bar(name='Gamma', x=df['ID'], y=df['Gamma'], marker_color=['#ff0033' if o == 'HARMFUL' else '#00d4ff' for o in df['Outcome']])
-        ])
-        fig.update_layout(title="Gamma Comparison Across Saved Patients", xaxis_title="Patient ID", yaxis_title="Effective Gamma", template="plotly_white")
-        st.plotly_chart(fig, use_container_width=True)
+        # Advanced Scatter Plot (Bubble Chart)
+        fig_compare = go.Figure()
+        
+        for i, row in df.iterrows():
+            fig_compare.add_trace(go.Scatter(
+                x=[row['Gamma']], y=[row['F. nucleatum']],
+                mode='markers+text',
+                marker=dict(size=20, color='#ff0033' if row['Outcome'] == 'HARMFUL' else '#00d4ff', line=dict(color='black', width=1)),
+                text=[f"Patient {row['ID']}"],
+                textposition="top center",
+                name=f"Patient {row['ID']} ({row['Outcome']})"
+            ))
+            
+        # Add the threshold line
+        fig_compare.add_hline(y=0, line_dash="dot", line_color="gray")
+        fig_compare.add_vline(x=threshold, line_dash="dash", line_color="red", annotation_text="Threshold")
+        
+        fig_compare.update_layout(
+            title="Patient Clustering: Gamma vs F. nucleatum Load",
+            xaxis_title="Effective Gamma",
+            yaxis_title="F. nucleatum Load",
+            template="plotly_white",
+            height=500
+        )
+        st.plotly_chart(fig_compare, use_container_width=True)
+        
+        # Statistical Summary Table
+        st.markdown("### Cohort Summary Statistics")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Total Patients Saved", len(df))
+        c2.metric("Harmful Outcomes", len(df[df['Outcome'] == 'HARMFUL']))
+        c3.metric("Protective Outcomes", len(df[df['Outcome'] == 'PROTECTIVE']))
+        
+        st.dataframe(df, use_container_width=True)
 
 # --- FOOTER ---
 st.markdown("---")
