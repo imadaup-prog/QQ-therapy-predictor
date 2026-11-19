@@ -334,15 +334,21 @@ with tab5:
         st.plotly_chart(fig_bar, use_container_width=True)
 
 # ==========================================
-# TAB 6: SMART REPORT
+# TAB 6: SMART REPORT (FIXED)
 # ==========================================
 with tab6:
     st.subheader(t["report_title"])
     st.markdown(f"""<div class="explain-box">{t['report_exp']}</div>""", unsafe_allow_html=True)
+    
+    # Dynamic label for the report
+    report_metric_label_en = "Risk" if outcome == "HARMFUL" else "Confidence"
+    report_metric_label_cn = "风险" if outcome == "HARMFUL" else "信心"
+
     if lang == "English":
-        report = f"Patient: {sex}, PIK3CA {pik3ca}. Effective Gamma: {gamma_effective:.2f}. F. nucleatum Load: {f_nucleatum_load:.2f}.\n\nAI RECOMMENDATION: {rec} (Risk: {risk_pct}%)."
+        report = f"Patient: {sex}, PIK3CA {pik3ca}. Effective Gamma: {gamma_effective:.2f}. F. nucleatum Load: {f_nucleatum_load:.2f}.\n\nAI RECOMMENDATION: {rec} ({report_metric_label_en}: {risk_pct}%)."
     else:
-        report = f"患者：{sex}，PIK3CA {pik3ca}。有效Gamma：{gamma_effective:.2f}。具核梭杆菌载量：{f_nucleatum_load:.2f}。\n\nAI建议：{rec}（风险：{risk_pct}%）。"
+        report = f"患者：{sex}，PIK3CA {pik3ca}。有效Gamma：{gamma_effective:.2f}。具核梭杆菌载量：{f_nucleatum_load:.2f}。\n\nAI建议：{rec}（{report_metric_label_cn}：{risk_pct}%）。"
+    
     st.text_area(t["report_area"], report, height=200)
     st.download_button(t["report_dl"], data=report, file_name="Clinical_Note.txt")
 
