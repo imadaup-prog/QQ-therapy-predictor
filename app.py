@@ -40,6 +40,7 @@ translations = {
         "tab4": "🫁 3D Human Colon", "tab5": "📊 Compare", "tab6": "📝 Report",
         "diag_res": "Diagnostic Result", "give_qq": "GIVE QQ THERAPY", "no_qq": "DO NOT GIVE QQ THERAPY",
         "adv_risk": "Adverse Risk", "eff_gamma": "Effective Gamma",
+        "risk_harm": "Risk of QQ Harm", "risk_benefit": "Confidence in QQ Benefit",
         "balance_title": "Molecular Balance Scale:",
         "balance_exp": "<b>How to read this:</b> The scale shows the battle between Bacteria (left) and Host Shield (right). If the Host Shield is heavier, the pathway is protective and QQ should be avoided.",
         "reasoning": "Biological Reasoning",
@@ -86,6 +87,7 @@ translations = {
         "tab4": "🫁 3D人体结肠", "tab5": "📊 患者对比", "tab6": "📝 智能报告",
         "diag_res": "诊断结果", "give_qq": "建议给予QQ治疗", "no_qq": "不建议给予QQ治疗",
         "adv_risk": "不良风险", "eff_gamma": "有效Gamma",
+        "risk_harm": "QQ有害风险", "risk_benefit": "QQ获益信心",
         "balance_title": "分子平衡天平：",
         "balance_exp": "<b>如何解读：</b> 天平展示了细菌（左）与宿主保护盾（右）之间的较量。如果宿主保护盾更重，说明该通路具有保护性，应避免使用QQ。",
         "reasoning": "生物学推理",
@@ -176,10 +178,12 @@ with tab1:
         st.subheader(t["diag_res"])
         if outcome == "HARMFUL": st.error(f"# {icon} {rec}")
         else: st.success(f"# {icon} {rec}")
+        
         c1, c2 = st.columns(2)
-        risk_label = "Risk of QQ Harm" if outcome == "HARMFUL" else "Confidence in QQ Benefit"
-c1.markdown(f'<div class="metric-card"><div class="metric-value">{risk_pct}%</div><div class="metric-label">{risk_label}</div></div>', unsafe_allow_html=True)
-c2.markdown(f'<div class="metric-card"><div class="metric-value">{gamma_effective:.2f}</div><div class="metric-label">{t["eff_gamma"]}</div></div>', unsafe_allow_html=True)
+        # Dynamic risk label: different meaning depending on outcome
+        risk_label = t["risk_harm"] if outcome == "HARMFUL" else t["risk_benefit"]
+        c1.markdown(f'<div class="metric-card"><div class="metric-value">{risk_pct}%</div><div class="metric-label">{risk_label}</div></div>', unsafe_allow_html=True)
+        c2.markdown(f'<div class="metric-card"><div class="metric-value">{gamma_effective:.2f}</div><div class="metric-label">{t["eff_gamma"]}</div></div>', unsafe_allow_html=True)
         
         st.markdown(f"**{t['balance_title']}**")
         st.markdown(f"""<div class="explain-box">{t['balance_exp']}</div>""", unsafe_allow_html=True)
