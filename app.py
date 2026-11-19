@@ -177,8 +177,9 @@ with tab1:
         if outcome == "HARMFUL": st.error(f"# {icon} {rec}")
         else: st.success(f"# {icon} {rec}")
         c1, c2 = st.columns(2)
-        c1.markdown(f'<div class="metric-card"><div class="metric-value">{risk_pct}%</div><div class="metric-label">{t["adv_risk"]}</div></div>', unsafe_allow_html=True)
-        c2.markdown(f'<div class="metric-card"><div class="metric-value">{gamma_effective:.2f}</div><div class="metric-label">{t["eff_gamma"]}</div></div>', unsafe_allow_html=True)
+        risk_label = "Risk of QQ Harm" if outcome == "HARMFUL" else "Confidence in QQ Benefit"
+c1.markdown(f'<div class="metric-card"><div class="metric-value">{risk_pct}%</div><div class="metric-label">{risk_label}</div></div>', unsafe_allow_html=True)
+c2.markdown(f'<div class="metric-card"><div class="metric-value">{gamma_effective:.2f}</div><div class="metric-label">{t["eff_gamma"]}</div></div>', unsafe_allow_html=True)
         
         st.markdown(f"**{t['balance_title']}**")
         st.markdown(f"""<div class="explain-box">{t['balance_exp']}</div>""", unsafe_allow_html=True)
